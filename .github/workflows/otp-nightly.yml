@@ -1,4 +1,4 @@
-name: OTP nightly integration
+name: trakpi nightly (Entur OTP dev)
 
 # Runs the trakpi OTP reference against the Entur OTP dev API, nightly.
 #
