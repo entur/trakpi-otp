@@ -3,7 +3,7 @@ kind: GoogleCloudApplication
 metadata:
   id: trakpiotp
   displayName: TrakPi KPI Tracking
-  name: trakpi-otp
+  name: trakpiotp
   owner: team-ror
   trigger: 1783512163
 spec:

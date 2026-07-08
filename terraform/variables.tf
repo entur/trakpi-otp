@@ -9,6 +9,6 @@ variable "environment" {
 }
 
 variable "gha_service_account" {
-  description = "GitHub Actions SA for this environment, e.g. gh-trakpiotp-<hash>-tst@ent-github-shr.iam.gserviceaccount.com. Known after `entur apply`."
+  description = "GitHub Actions SA for this environment, e.g. gh-trakpi-otp-<hash>-tst@ent-github-shr.iam.gserviceaccount.com. Known after `entur apply`."
   type        = string
 }
