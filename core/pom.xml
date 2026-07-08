@@ -13,6 +13,7 @@
     <modules>
         <module>tester</module>
         <module>orchestrator</module>
+        <module>analyzer</module>
         <module>trakpi</module>
     </modules>
 
@@ -57,6 +58,11 @@
             <dependency>
                 <groupId>org.opentripplanner.trakpi</groupId>
                 <artifactId>orchestrator</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.opentripplanner.trakpi</groupId>
+                <artifactId>analyzer</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

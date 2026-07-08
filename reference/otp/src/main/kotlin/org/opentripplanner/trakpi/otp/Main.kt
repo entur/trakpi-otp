@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.otp
 
 import java.nio.file.Path
 import org.opentripplanner.trakpi.runTrakpi
+import org.opentripplanner.trakpi.storage.file.FileResultsLoader
 import org.opentripplanner.trakpi.storage.file.FileResultsStorage
 
 private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v3/graphql"
@@ -21,4 +22,5 @@ fun main(args: Array<String>) =
                 MinTransfersKPICalculator(),
             ),
         resultsStorage = FileResultsStorage(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results")),
+        resultsLoader = FileResultsLoader(),
     )

@@ -35,7 +35,7 @@ jobs:
         run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --config reference/otp/trakpi.properties
 
       - name: Show results
-        run: cat results/*.json
+        run: find results -name '*.json' -exec cat {} +
 
       - name: Upload results
         uses: actions/upload-artifact@v4

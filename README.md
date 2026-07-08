@@ -35,9 +35,10 @@ and `reference/otp` are standalone builds that depend on the published `core`.
 core/
   tester          runs tests against an already-started planner
   orchestrator    prepares, starts and stops the planner
+  analyzer        reads stored run history and computes KPI trends and diffs
   trakpi          the library: command-line surface and public entry point (runTrakpi)
 storage/
-  file            file-based ResultsStorage adapter
+  file            file-based ResultsStorage (write) and ResultsLoader (read) adapters
 reference/
   otp             executable reference implementation for OpenTripPlanner
 ```
@@ -106,6 +107,29 @@ trakpi stop --version A
 Running `trakpi test` without first running `trakpi start` triggers a full `start - test - stop` flow for convenience.
 
 Only a single instance can be started at a time.
+
+## Usage - Analyzing results
+Each `trakpi test` run writes its results grouped under a run id. Point `trakpi analyze` at a folder holding one or
+more such runs to see how KPIs move over time, or to diff two versions. Where results are stored is entirely up to the
+`spi.ResultsLoader` adapter — trakpi knows nothing about GitHub, cloud storage, or how the history was assembled. The
+file loader takes its arguments as an opaque `--loaderargs` string, mirroring `prepare --plannerargs`.
+
+```bash
+# Trend: aggregate each KPI per run and print a time-ordered series
+trakpi analyze --loaderargs "--results-dir results/"
+
+# Diff: compare the latest run of one version against a baseline version
+trakpi analyze --loaderargs "--results-dir results/" --version <sha> --baseline <sha>
+```
+
+When runs are produced by a CI job that uploads each run as a build artifact, assemble the history locally first. The
+included helper does this for the OTP reference's GitHub Actions artifacts (it is the only GitHub-aware piece; trakpi
+just reads the folder it produces):
+
+```bash
+scripts/download-artifacts.sh results/
+trakpi analyze --loaderargs "--results-dir results/"
+```
 
 ## Inputs - requests
 Each test run executes a set or requests. These are loaded from a folder of text files as configured in the config file.

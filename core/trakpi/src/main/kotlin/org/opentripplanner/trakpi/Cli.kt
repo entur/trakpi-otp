@@ -10,6 +10,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
+import java.time.Instant
+import org.opentripplanner.trakpi.analyzer.Analyzer
+import org.opentripplanner.trakpi.analyzer.ReportFormatter
+import org.opentripplanner.trakpi.analyzer.spi.ResultsLoader
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.Orchestrator
 import org.opentripplanner.trakpi.tester.RequestFileLoader
@@ -17,6 +21,7 @@ import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
@@ -27,6 +32,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
     travelPlanner: TravelPlanner<R>,
     kpiCalculators: List<KPICalculator>,
     resultsStorage: ResultsStorage,
+    resultsLoader: ResultsLoader,
 ) {
     val orchestrator = Orchestrator()
     Trakpi()
@@ -35,8 +41,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
             Start(orchestrator),
             Stop(orchestrator),
             Test(requestLoader, travelPlanner, kpiCalculators, resultsStorage),
-            Kpis(),
-            Diff(),
+            Analyze(Analyzer(resultsLoader)),
         )
         .main(args)
 }
@@ -94,6 +99,7 @@ internal class Test<R : TravelPlannerRequest>(
                 throw UsageError(e.message ?: "Invalid configuration")
             }
         Tester(
+                run = RunMetadata.create(version = version, startedAt = Instant.now()),
                 requestFileLoader = RequestFileLoader(config.requestsDir),
                 requestLoader = requestLoader,
                 travelPlanner = travelPlanner,
@@ -104,19 +110,29 @@ internal class Test<R : TravelPlannerRequest>(
     }
 }
 
-internal class Kpis : VersionedCommand("kpis") {
-    override fun help(context: Context) = "Show the KPIs for a planner version."
+/**
+ * Analyzes stored run history. With no [baseline] it prints a KPI trend across all runs; with
+ * `--baseline` it diffs the latest run of [version] (default: the most recent run) against the
+ * latest run of the baseline version.
+ */
+internal class Analyze(private val analyzer: Analyzer) : CliktCommand(name = "analyze") {
+    override fun help(context: Context) = "Show KPI trends across runs, or diff one version against a baseline."
 
-    // TODO: analysis command. Its module home is not yet decided (orchestrator, or a future
-    //  dedicated analysis module), so it stays a placeholder here for now.
-    override fun run() = echo("TODO: kpis $version")
-}
+    private val loaderArgs: String? by
+        option("--loaderargs", help = "Opaque arguments passed to the results loader, e.g. \"--results-dir results/\"")
+    private val version: String? by option("--version", help = "Version to diff (defaults to the most recent run)")
+    private val baseline: String? by option("--baseline", help = "Baseline version to diff against; enables diff mode")
 
-internal class Diff : VersionedCommand("diff") {
-    override fun help(context: Context) = "Compare KPIs against a baseline version."
-
-    private val baseline: String by option("--baseline", help = "Baseline version to compare against").required()
-
-    // TODO: analysis command. See the note on Kpis about where this should ultimately live.
-    override fun run() = echo("TODO: diff $version against $baseline")
+    override fun run() {
+        try {
+            val output =
+                when (val base = baseline) {
+                    null -> ReportFormatter.format(analyzer.trend(loaderArgs))
+                    else -> ReportFormatter.format(analyzer.diff(loaderArgs, version, base))
+                }
+            echo(output)
+        } catch (e: IllegalArgumentException) {
+            throw UsageError(e.message ?: "Could not analyze results")
+        }
+    }
 }

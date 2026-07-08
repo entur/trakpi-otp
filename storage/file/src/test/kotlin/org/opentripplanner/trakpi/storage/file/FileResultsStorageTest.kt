@@ -14,26 +14,31 @@ import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
 class FileResultsStorageTest {
     @Test
-    fun `writes a json file per result`() {
+    fun `writes a json file per result under a run subdirectory`() {
         val dir = Files.createTempDirectory("results")
         val clock = Clock.fixed(Instant.parse("2026-06-23T04:00:00Z"), ZoneOffset.UTC)
         val storage = FileResultsStorage(dir, clock)
+        val run = RunMetadata.create(version = "dev", startedAt = Instant.parse("2026-06-23T04:00:00Z"))
 
         storage.store(
+            run,
             TestCaseResult(
                 requestId = "request-1",
                 rawResponse = """{"data":{"trip":{"tripPatterns":[]}}}""",
                 kpis = listOf(Kpi("itineraryCount", 5.0)),
-            )
+            ),
         )
 
-        val file = dir.resolve("request-1.json")
+        val file = dir.resolve(run.runId).resolve("request-1.json")
         assertTrue(file.exists())
         val obj = Json.parseToJsonElement(file.readText()).jsonObject
+        assertEquals(run.runId, obj["runId"]!!.jsonPrimitive.content)
+        assertEquals("dev", obj["version"]!!.jsonPrimitive.content)
         assertEquals("request-1", obj["requestId"]!!.jsonPrimitive.content)
         assertEquals("2026-06-23T04:00:00Z", obj["timestamp"]!!.jsonPrimitive.content)
         assertEquals(5.0, obj["kpis"]!!.jsonObject["itineraryCount"]!!.jsonPrimitive.double)
