@@ -1,0 +1,7 @@
+# Code owners for trakpi-otp.
+# Owners are auto-requested for review on PRs and, with "Require review from Code Owners"
+# enabled in the branch ruleset, must approve before a PR can merge.
+# Owners must have write access to the repo.
+
+# Everything is owned by @sigtot.
+* @sigtot
