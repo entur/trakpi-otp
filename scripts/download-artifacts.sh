@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-REPO="opentripplanner/TrakPi"
+REPO="entur/otp-trakpi"
 ARTIFACT_NAME="trakpi-results"
 OUT="${1:-results}"
 
