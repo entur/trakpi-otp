@@ -1,0 +1,45 @@
+module "init" {
+  source      = "github.com/entur/terraform-google-init//modules/init?ref=v1.0.0"
+  app_id      = var.app_id
+  environment = var.environment
+}
+
+resource "google_bigquery_dataset" "kpi_tracking" {
+  dataset_id = "kpi_tracking"
+  project    = module.init.app.project_id
+  location   = "EU"
+}
+
+resource "google_bigquery_table" "kpi_metrics" {
+  dataset_id          = google_bigquery_dataset.kpi_tracking.dataset_id
+  table_id            = "kpi_metrics_v1"
+  project             = module.init.app.project_id
+  deletion_protection = false # flip to true once the schema is stable
+
+  schema = jsonencode([
+    { name = "run_id", type = "STRING", mode = "REQUIRED" },
+    { name = "version", type = "STRING", mode = "REQUIRED" },
+    { name = "run_ts", type = "TIMESTAMP", mode = "REQUIRED" },
+    { name = "request_id", type = "STRING", mode = "REQUIRED" },
+    { name = "kpi_name", type = "STRING", mode = "REQUIRED" },
+    { name = "value", type = "FLOAT64", mode = "REQUIRED" },
+  ])
+
+  time_partitioning {
+    type  = "DAY"
+    field = "run_ts"
+  }
+}
+
+resource "google_bigquery_dataset_iam_member" "gha_data_editor" {
+  project    = module.init.app.project_id
+  dataset_id = google_bigquery_dataset.kpi_tracking.dataset_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${var.gha_service_account}"
+}
+
+resource "google_project_iam_member" "gha_job_user" {
+  project = module.init.app.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.gha_service_account}"
+}

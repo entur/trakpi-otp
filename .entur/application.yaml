@@ -1,0 +1,11 @@
+apiVersion: orchestrator.entur.io/apps/v1
+kind: GoogleCloudApplication
+metadata:
+  id: trakpiotp
+  displayName: TrakPi KPI Tracking
+  name: trakpi-otp
+  owner: team-ror
+  trigger: 1783512163
+spec:
+  environments: [tst]
+  repositories: [trakpi-otp]

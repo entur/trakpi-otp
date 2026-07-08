@@ -1,0 +1,11 @@
+# .entur/cicd.yaml — grants this repo's GitHub Actions access to the GCP project(s) via Workload
+# Identity Federation. Onboarding this populates the repo variables the nightly workflow reads:
+# WORKLOAD_IDENTITY_PROVIDER, SERVICE_ACCOUNT and GCP_PROJECT_ID, and provisions the per-env service
+# account gh-trakpiotp-<hash>-<env>@ent-github-shr.iam.gserviceaccount.com.
+#
+apiVersion: orchestrator.entur.io/github/v1
+kind: GitHubActions
+metadata:
+  id: trakpi-otp
+spec:
+  environments: [tst]

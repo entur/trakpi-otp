@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-REPO="entur/otp-trakpi"
+REPO="entur/trakpiotp"
 ARTIFACT_NAME="trakpi-results"
 OUT="${1:-results}"
 
