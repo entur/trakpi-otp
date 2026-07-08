@@ -1,17 +1,23 @@
 name: trakpi nightly (Entur OTP dev)
 
-# Runs the trakpi OTP reference against the Entur OTP dev API, nightly.
-#
-# GitHub cron is UTC and best-effort (runs may be delayed). Scheduled runs only fire from the
-# default branch.
+# Runs the trakpi OTP reference against the Entur OTP dev API nightly and streams the KPIs straight
+# into BigQuery. GitHub cron is UTC and best-effort; scheduled runs only fire from the default branch.
 on:
   schedule:
-    - cron: "0 4 * * *" # 04:00 UTC (~05:00/06:00 Norway). For ~04:00 local: "0 2 * * *" CEST / "0 3 * * *" CET.
+    - cron: "0 4 * * *" # 04:00 UTC (~05:00/06:00 Norway)
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment: tst
+    permissions:
+      contents: read
+      id-token: write # required for OIDC auth to GCP
+    env:
+      TRAKPI_BQ_PROJECT: ent-trakpiotp-tst # TODO add per-environment configuration
+      TRAKPI_BQ_DATASET: kpi_tracking
+      TRAKPI_BQ_TABLE: kpi_metrics_v1
     steps:
       - uses: actions/checkout@v4
 
@@ -22,24 +28,26 @@ jobs:
           java-version: "25"
           cache: maven
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.CI_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Build and install trakpi core
         run: mvn -B -f core/pom.xml install
 
       - name: Build and install the file storage adapter
         run: mvn -B -f storage/file/pom.xml install
 
+      - name: Build and install the BigQuery storage adapter
+        run: mvn -B -f storage/bigquery/pom.xml install
+
       - name: Build the OTP reference
         run: mvn -B -f reference/otp/pom.xml package
 
-      - name: Run trakpi test against OTP dev
+      - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
         run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --config reference/otp/trakpi.properties
-
-      - name: Show results
-        run: find results -name '*.json' -exec cat {} +
-
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: trakpi-results
-          path: results/
-          if-no-files-found: error

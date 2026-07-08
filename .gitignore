@@ -26,3 +26,7 @@ hs_err_pid*
 
 results
 nightly-artifacts
+
+# Terraform
+terraform/.terraform
+terraform/.terraform.lock.hcl
