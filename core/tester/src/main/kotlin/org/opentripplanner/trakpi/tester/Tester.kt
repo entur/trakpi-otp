@@ -10,7 +10,7 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
  * Runs a test: loads each request file, executes it against the travel planner, computes the KPIs
- * for the response, and stores the result under the given [run].
+ * that apply to the response, and stores the result under the given [run].
  */
 class Tester<R : TravelPlannerRequest>(
     private val run: RunMetadata,
@@ -24,7 +24,7 @@ class Tester<R : TravelPlannerRequest>(
         for (file in requestFileLoader.loadAll()) {
             val request = requestLoader.load(file)
             val response = travelPlanner.execute(request)
-            val kpis = kpiCalculators.map { it.calculate(response) }
+            val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
             resultsStorage.store(run, TestCaseResult(file.id, response.raw, kpis))
         }
     }

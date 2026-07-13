@@ -8,15 +8,15 @@ import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
-/** Fewest transfers across the returned itineraries (transit legs minus one); 0 when none. */
+/** Fewest transfers across the returned itineraries (transit legs minus one); null when the response has no itineraries. */
 class MinTransfersKPICalculator : KPICalculator {
-    override fun calculate(response: TravelPlannerResponse): Kpi {
+    override fun calculate(response: TravelPlannerResponse): Kpi? {
         val transfers =
             response.tripPatterns().map { tp ->
                 val legs = tp["legs"] as? JsonArray ?: JsonArray(emptyList())
                 val transitLegs = legs.count { it.jsonObject["mode"]?.jsonPrimitive?.content != "foot" }
                 (transitLegs - 1).coerceAtLeast(0)
-            }.minOrNull() ?: 0
+            }.minOrNull() ?: return null
         return Kpi("minTransfers", transfers.toDouble())
     }
 }

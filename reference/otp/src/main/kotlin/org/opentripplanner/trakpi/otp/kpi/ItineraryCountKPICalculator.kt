@@ -1,21 +1,15 @@
 package org.opentripplanner.trakpi.otp.kpi
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import org.opentripplanner.trakpi.otp.tripObject
+import org.opentripplanner.trakpi.otp.tripPatterns
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
-/** Counts the itineraries (trip patterns) in an OTP `trip` response. */
+/** Number of itineraries (trip patterns) in an OTP `trip` response; null for non-routing responses (no `trip`). */
 class ItineraryCountKPICalculator : KPICalculator {
-    override fun calculate(response: TravelPlannerResponse): Kpi {
-        val tripPatterns =
-            Json.parseToJsonElement(response.raw)
-                .jsonObject["data"]
-                ?.jsonObject?.get("trip")
-                ?.jsonObject?.get("tripPatterns")
-                ?.jsonArray
-        return Kpi("itineraryCount", (tripPatterns?.size ?: 0).toDouble())
+    override fun calculate(response: TravelPlannerResponse): Kpi? {
+        response.tripObject() ?: return null // not a routing response — itinerary count doesn't apply
+        return Kpi("itineraryCount", response.tripPatterns().size.toDouble())
     }
 }
