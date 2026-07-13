@@ -1,8 +1,9 @@
-package org.opentripplanner.trakpi.otp
+package org.opentripplanner.trakpi.otp.kpi
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.opentripplanner.trakpi.otp.tripPatterns
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse

@@ -1,6 +1,10 @@
 package org.opentripplanner.trakpi.otp
 
 import java.nio.file.Path
+import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsStorage
 import org.opentripplanner.trakpi.storage.file.FileResultsLoader
