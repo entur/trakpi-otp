@@ -43,3 +43,13 @@ resource "google_project_iam_member" "gha_job_user" {
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${var.gha_service_account}"
 }
+
+# grafana.entur.org reads this dataset through the shared BigQuery datasource, which queries as the Grafana
+# pod's Workload Identity service account (authenticationType=gce). (See entur/grafana IaC, helm/grafana/env/prd.yaml).
+# That SA needs dataViewer on the dataset.
+resource "google_bigquery_dataset_iam_member" "grafana_data_viewer" {
+  project    = module.init.app.project_id
+  dataset_id = google_bigquery_dataset.kpi_tracking.dataset_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${var.grafana_workload_identity_service_account}"
+}
