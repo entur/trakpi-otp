@@ -1,0 +1,13 @@
+{
+  quay(id: "NSR:Quay:562") {
+    id
+    name
+    estimatedCalls(numberOfDepartures: 10) {
+      aimedDepartureTime
+      expectedDepartureTime
+      realtime
+      destinationDisplay { frontText }
+      serviceJourney { line { publicCode } }
+    }
+  }
+}

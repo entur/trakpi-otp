@@ -1,0 +1,13 @@
+{
+  stopPlace(id: "NSR:StopPlace:337") {
+    id
+    name
+    estimatedCalls(numberOfDepartures: 10) {
+      aimedDepartureTime
+      expectedDepartureTime
+      realtime
+      destinationDisplay { frontText }
+      serviceJourney { line { publicCode name } }
+    }
+  }
+}

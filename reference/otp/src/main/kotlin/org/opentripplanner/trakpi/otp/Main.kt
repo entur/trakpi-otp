@@ -1,6 +1,7 @@
 package org.opentripplanner.trakpi.otp
 
 import java.nio.file.Path
+import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
@@ -27,6 +28,7 @@ fun main(args: Array<String>) =
                 RoutingTimeKPICalculator(),
                 FastestItineraryKPICalculator(),
                 MinTransfersKPICalculator(),
+                DepartureCountKPICalculator(),
             ),
         resultsStorage = resultsStorage(),
         resultsLoader = FileResultsLoader(),
