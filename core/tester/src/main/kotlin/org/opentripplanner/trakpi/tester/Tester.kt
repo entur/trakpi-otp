@@ -21,11 +21,15 @@ class Tester<R : TravelPlannerRequest>(
     private val resultsStorage: ResultsStorage,
 ) {
     fun run() {
-        for (file in requestFileLoader.loadAll()) {
+        val files = requestFileLoader.loadAll()
+        files.forEachIndexed { index, file ->
+            print("[${index + 1}/${files.size}] ${file.id} ... ")
             val request = requestLoader.load(file)
             val response = travelPlanner.execute(request)
             val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
             resultsStorage.store(run, TestCaseResult(file.id, response.raw, kpis))
+            println("${kpis.size} KPI(s)")
         }
+        println("Done: ${files.size} request(s).")
     }
 }
