@@ -25,7 +25,6 @@ dependency-reduced-pom.xml
 hs_err_pid*
 
 results
-nightly-artifacts
 
 # Terraform
 terraform/.terraform

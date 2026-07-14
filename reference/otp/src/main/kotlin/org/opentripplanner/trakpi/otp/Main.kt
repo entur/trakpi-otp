@@ -8,7 +8,6 @@ import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsStorage
-import org.opentripplanner.trakpi.storage.file.FileResultsLoader
 import org.opentripplanner.trakpi.storage.file.FileResultsStorage
 import org.opentripplanner.trakpi.tester.spi.ResultsStorage
 
@@ -31,7 +30,6 @@ fun main(args: Array<String>) =
                 DepartureCountKPICalculator(),
             ),
         resultsStorage = resultsStorage(),
-        resultsLoader = FileResultsLoader(),
     )
 
 private fun resultsStorage(): ResultsStorage {

@@ -31,10 +31,6 @@
             <groupId>org.opentripplanner.trakpi</groupId>
             <artifactId>orchestrator</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.opentripplanner.trakpi</groupId>
-            <artifactId>analyzer</artifactId>
-        </dependency>
 
         <!-- Test dependencies -->
         <dependency>

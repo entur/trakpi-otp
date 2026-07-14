@@ -11,9 +11,6 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 import java.time.Instant
-import org.opentripplanner.trakpi.analyzer.Analyzer
-import org.opentripplanner.trakpi.analyzer.ReportFormatter
-import org.opentripplanner.trakpi.analyzer.spi.ResultsLoader
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.Orchestrator
 import org.opentripplanner.trakpi.tester.RequestFileLoader
@@ -32,7 +29,6 @@ fun <R : TravelPlannerRequest> runTrakpi(
     travelPlanner: TravelPlanner<R>,
     kpiCalculators: List<KPICalculator>,
     resultsStorage: ResultsStorage,
-    resultsLoader: ResultsLoader,
 ) {
     val orchestrator = Orchestrator()
     Trakpi()
@@ -41,7 +37,6 @@ fun <R : TravelPlannerRequest> runTrakpi(
             Start(orchestrator),
             Stop(orchestrator),
             Test(requestLoader, travelPlanner, kpiCalculators, resultsStorage),
-            Analyze(Analyzer(resultsLoader)),
         )
         .main(args)
 }
@@ -107,32 +102,5 @@ internal class Test<R : TravelPlannerRequest>(
                 resultsStorage = resultsStorage,
             )
             .run()
-    }
-}
-
-/**
- * Analyzes stored run history. With no [baseline] it prints a KPI trend across all runs; with
- * `--baseline` it diffs the latest run of [version] (default: the most recent run) against the
- * latest run of the baseline version.
- */
-internal class Analyze(private val analyzer: Analyzer) : CliktCommand(name = "analyze") {
-    override fun help(context: Context) = "Show KPI trends across runs, or diff one version against a baseline."
-
-    private val loaderArgs: String? by
-        option("--loaderargs", help = "Opaque arguments passed to the results loader, e.g. \"--results-dir results/\"")
-    private val version: String? by option("--version", help = "Version to diff (defaults to the most recent run)")
-    private val baseline: String? by option("--baseline", help = "Baseline version to diff against; enables diff mode")
-
-    override fun run() {
-        try {
-            val output =
-                when (val base = baseline) {
-                    null -> ReportFormatter.format(analyzer.trend(loaderArgs))
-                    else -> ReportFormatter.format(analyzer.diff(loaderArgs, version, base))
-                }
-            echo(output)
-        } catch (e: IllegalArgumentException) {
-            throw UsageError(e.message ?: "Could not analyze results")
-        }
     }
 }

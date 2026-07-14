@@ -35,10 +35,9 @@ and `reference/otp` are standalone builds that depend on the published `core`.
 core/
   tester          runs tests against an already-started planner
   orchestrator    prepares, starts and stops the planner
-  analyzer        reads stored run history and computes KPI trends and diffs
   trakpi          the library: command-line surface and public entry point (runTrakpi)
 storage/
-  file            file-based ResultsStorage (write) and ResultsLoader (read) adapters
+  file            file-based ResultsStorage that writes each result as a JSON file
 reference/
   otp             executable reference implementation for OpenTripPlanner
 ```
@@ -108,27 +107,17 @@ Running `trakpi test` without first running `trakpi start` triggers a full `star
 
 Only a single instance can be started at a time.
 
-## Usage - Analyzing results
-Each `trakpi test` run writes its results grouped under a run id. Point `trakpi analyze` at a folder holding one or
-more such runs to see how KPIs move over time, or to diff two versions. Where results are stored is entirely up to the
-`spi.ResultsLoader` adapter — trakpi knows nothing about GitHub, cloud storage, or how the history was assembled. The
-file loader takes its arguments as an opaque `--loaderargs` string, mirroring `prepare --plannerargs`.
+## Usage - Inspecting results
+Each `trakpi test` run writes one JSON file per request to `results/<runId>/<requestId>.json` (the
+`FileResultsStorage` default; override the directory with `TRAKPI_RESULTS_DIR`). Each file holds the
+run metadata, the raw planner response, and the computed KPIs under `kpis`. Read them however you
+like — [`jq`](https://jqlang.github.io/jq/) is handy for quick aggregates. For example, to average
+the `routingTimeMs` KPI across a run:
 
 ```bash
-# Trend: aggregate each KPI per run and print a time-ordered series
-trakpi analyze --loaderargs "--results-dir results/"
-
-# Diff: compare the latest run of one version against a baseline version
-trakpi analyze --loaderargs "--results-dir results/" --version <sha> --baseline <sha>
-```
-
-When runs are produced by a CI job that uploads each run as a build artifact, assemble the history locally first. The
-included helper does this for the OTP reference's GitHub Actions artifacts (it is the only GitHub-aware piece; trakpi
-just reads the folder it produces):
-
-```bash
-scripts/download-artifacts.sh results/
-trakpi analyze --loaderargs "--results-dir results/"
+# Slurp every result file in the run into one array, then average the KPI.
+# `numbers` skips files where the KPI is absent, so `add` never chokes on a null.
+jq -s '[.[].kpis.routingTimeMs | numbers] | add / length' results/<runId>/*.json
 ```
 
 ## Inputs - requests

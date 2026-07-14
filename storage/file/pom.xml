@@ -7,7 +7,7 @@
     <groupId>org.opentripplanner.trakpi</groupId>
     <artifactId>storage-file</artifactId>
     <name>Trakπ Storage: file</name>
-    <description>File-based adapters: a ResultsStorage that writes each result as a JSON file, and a ResultsLoader that reads runs back for analysis.</description>
+    <description>File-based adapter: a ResultsStorage that writes each result as a JSON file.</description>
     <version>1.0.0-SNAPSHOT</version>
 
     <properties>
@@ -28,11 +28,6 @@
         <dependency>
             <groupId>org.opentripplanner.trakpi</groupId>
             <artifactId>tester</artifactId>
-            <version>${trakpi.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opentripplanner.trakpi</groupId>
-            <artifactId>analyzer</artifactId>
             <version>${trakpi.version}</version>
         </dependency>
         <dependency>
