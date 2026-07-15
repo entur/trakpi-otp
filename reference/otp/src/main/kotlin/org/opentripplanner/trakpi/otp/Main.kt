@@ -4,13 +4,16 @@ import java.nio.file.Path
 import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
+import org.opentripplanner.trakpi.storage.gcs.GcsResultsReader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
 import org.opentripplanner.trakpi.tester.FanOutResultsWriter
+import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 
 private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v3/graphql"
@@ -34,7 +37,14 @@ fun main(args: Array<String>) =
                 DepartureCountKPICalculator(),
             ),
         resultsWriter = resultsWriter(),
+        comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
+        resultsReader = resultsReader(),
     )
+
+private fun resultsReader(): ResultsReader? {
+    val bucket = System.getenv("TRAKPI_GCS_BUCKET") ?: return null
+    return GcsResultsReader.create(bucket)
+}
 
 private fun resultsWriter(): ResultsWriter {
     val writers = buildList {

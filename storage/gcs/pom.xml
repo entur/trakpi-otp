@@ -15,6 +15,7 @@
         <kotlin.version>2.3.21</kotlin.version>
         <trakpi.version>1.0.0-SNAPSHOT</trakpi.version>
         <libraries.bom.version>26.50.0</libraries.bom.version>
+        <serialization.version>1.11.0</serialization.version>
         <junit.version>5.11.4</junit.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -46,6 +47,11 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-serialization-json-jvm</artifactId>
+            <version>${serialization.version}</version>
         </dependency>
 
         <!-- Test dependencies -->

@@ -7,17 +7,20 @@ import com.google.cloud.storage.StorageOptions
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**
- * Archives each result's raw request and response as objects in a GCS bucket so a later run can read
- * a reference run's request/response and compare against it.
+ * Archives each result's raw request and its response in a GCS bucket so a later run can read a
+ * reference run's response and compare against it. The request is stored raw; the response is stored
+ * as a serialized [TravelPlannerResponse] (raw body + success + method + attributes) so it round-trips.
  * Authenticates with Application Default Credentials.
  */
 class GcsResultsWriter(private val storage: Storage, private val bucket: String) : ResultsWriter {
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
         write(requestObjectName(run, result.requestId), result.request)
-        write(responseObjectName(run, result.requestId), result.rawResponse)
+        val response = TravelPlannerResponse(result.rawResponse, result.success, result.method, result.attributes)
+        write(responseObjectName(run, result.requestId), ResponseJson.serialize(response))
     }
 
     private fun write(objectName: String, body: String) {
@@ -33,8 +36,11 @@ class GcsResultsWriter(private val storage: Storage, private val bucket: String)
         internal fun requestObjectName(run: RunMetadata, requestId: String): String =
             "requests/${run.testsetVersion}/$requestId"
 
+        /** Object-name prefix holding one run's responses. */
+        internal fun resultsPrefix(testsetVersion: String, runId: String): String = "results/$testsetVersion/$runId/"
+
         /** Key for a response (one per run). */
         internal fun responseObjectName(run: RunMetadata, requestId: String): String =
-            "results/${run.testsetVersion}/${run.runId}/$requestId"
+            resultsPrefix(run.testsetVersion, run.runId) + requestId
     }
 }

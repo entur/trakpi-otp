@@ -15,8 +15,10 @@ import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.Orchestrator
 import org.opentripplanner.trakpi.tester.RequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
+import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
+import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
@@ -30,6 +32,8 @@ fun <R : TravelPlannerRequest> runTrakpi(
     travelPlanner: TravelPlanner<R>,
     kpiCalculators: List<KPICalculator>,
     resultsWriter: ResultsWriter,
+    comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
+    resultsReader: ResultsReader? = null,
 ) {
     val orchestrator = Orchestrator()
     Trakpi()
@@ -37,7 +41,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
             Prepare(orchestrator),
             Start(orchestrator),
             Stop(orchestrator),
-            Test(application, requestLoader, travelPlanner, kpiCalculators, resultsWriter),
+            Test(application, requestLoader, travelPlanner, kpiCalculators, resultsWriter, comparativeKpiCalculators, resultsReader),
         )
         .main(args)
 }
@@ -79,6 +83,8 @@ internal class Test<R : TravelPlannerRequest>(
     private val travelPlanner: TravelPlanner<R>,
     private val kpiCalculators: List<KPICalculator>,
     private val resultsWriter: ResultsWriter,
+    private val comparativeKpiCalculators: List<ComparativeKPICalculator>,
+    private val resultsReader: ResultsReader?,
 ) : VersionedCommand("test") {
     override fun help(context: Context) = "Run a test. Assumes the planner is running and ready."
 
@@ -88,6 +94,8 @@ internal class Test<R : TravelPlannerRequest>(
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
     private val referenceVersion: String? by
         option("--reference-version", help = "Baseline version to compare against; marks this run as the reference when it matches --version")
+    private val referenceRunId: String? by
+        option("--reference-run-id", help = "run_id of a prior run whose KPIs comparative calculators compare against (temporary handle until reference discovery lands)")
     private val testsetVersion: String by
         option("--testset-version", help = "Label of the request set being exercised").required()
 
@@ -113,6 +121,9 @@ internal class Test<R : TravelPlannerRequest>(
                 travelPlanner = travelPlanner,
                 kpiCalculators = kpiCalculators,
                 resultsWriter = resultsWriter,
+                comparativeKpiCalculators = comparativeKpiCalculators,
+                resultsReader = resultsReader,
+                referenceRunId = referenceRunId?.takeIf { it.isNotBlank() },
             )
             .run()
     }

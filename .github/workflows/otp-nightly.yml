@@ -20,6 +20,10 @@ jobs:
       TRAKPI_BQ_TABLE: kpi_metrics_v1
       TRAKPI_GCS_BUCKET: ent-trakpiotp-tst-trakpi-archive
       TRAKPI_TESTSET_VERSION: 2026-06-24
+      # TEMPORARY: run_id of the run to compare against (query BQ for it). Empty = no comparison.
+      # Replaced by automatic reference discovery later. The question is how we want this to be done.
+      # Should the SPI be aware of this mechanism? E.g. `trakpi find-reference-run`? Feels a bit foreign int the SPI.
+      TRAKPI_REFERENCE_RUN_ID: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -55,4 +59,4 @@ jobs:
         run: mvn -B -f reference/otp/pom.xml package
 
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
-        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --testset-version "$TRAKPI_TESTSET_VERSION" --config reference/otp/trakpi.properties
+        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --testset-version "$TRAKPI_TESTSET_VERSION" --reference-run-id "$TRAKPI_REFERENCE_RUN_ID" --config reference/otp/trakpi.properties
