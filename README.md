@@ -37,7 +37,7 @@ core/
   orchestrator    prepares, starts and stops the planner
   trakpi          the library: command-line surface and public entry point (runTrakpi)
 storage/
-  file            file-based ResultsStorage that writes each result as a JSON file
+  file            file-based ResultsWriter that writes each result as a JSON file
 reference/
   otp             executable reference implementation for OpenTripPlanner
 ```
@@ -109,7 +109,7 @@ Only a single instance can be started at a time.
 
 ## Usage - Inspecting results
 Each `trakpi test` run writes one JSON file per request to `results/<runId>/<requestId>.json` (the
-`FileResultsStorage` default; override the directory with `TRAKPI_RESULTS_DIR`). Each file holds the
+`FileResultsWriter` default; override the directory with `TRAKPI_RESULTS_DIR`). Each file holds the
 run metadata, the raw planner response, and the computed KPIs under `kpis`. Read them however you
 like — [`jq`](https://jqlang.github.io/jq/) is handy for quick aggregates. For example, to average
 the `routingTimeMs` KPI across a run:

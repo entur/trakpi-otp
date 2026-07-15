@@ -10,14 +10,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
 /**
  * Writes each result as a JSON file `<runId>/<requestId>.json` under [outputDir].
  */
-class FileResultsStorage(private val outputDir: Path, private val clock: Clock = Clock.systemUTC()) : ResultsStorage {
+class FileResultsWriter(private val outputDir: Path, private val clock: Clock = Clock.systemUTC()) : ResultsWriter {
     private val json = Json { prettyPrint = true }
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
@@ -29,8 +29,9 @@ class FileResultsStorage(private val outputDir: Path, private val clock: Clock =
             put("application", run.application)
             put("isReferenceVersion", run.isReferenceVersion)
             run.referenceVersion?.let { put("referenceVersion", it) }
-            run.testsetVersion?.let { put("testsetVersion", it) }
+            put("testsetVersion", run.testsetVersion)
             put("requestId", result.requestId)
+            put("request", result.request)
             put("method", result.method)
             put("success", result.success)
             put("timestamp", Instant.now(clock).toString())

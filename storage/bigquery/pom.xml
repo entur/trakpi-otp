@@ -7,7 +7,7 @@
     <groupId>org.opentripplanner.trakpi</groupId>
     <artifactId>storage-bigquery</artifactId>
     <name>Trakπ Storage: BigQuery</name>
-    <description>ResultsStorage adapter that streams each result's KPIs into a BigQuery table.</description>
+    <description>ResultsWriter adapter that streams each result's KPIs into a BigQuery table.</description>
     <version>1.0.0-SNAPSHOT</version>
 
     <properties>

@@ -7,15 +7,18 @@ import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.runTrakpi
-import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsStorage
-import org.opentripplanner.trakpi.storage.file.FileResultsStorage
-import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
+import org.opentripplanner.trakpi.storage.file.FileResultsWriter
+import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
+import org.opentripplanner.trakpi.tester.FanOutResultsWriter
+import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 
 private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v3/graphql"
 
-// Wires the OTP implementations of the trakpi SPI to the CLI. Results stream straight into BigQuery
-// when TRAKPI_BQ_PROJECT is set (the Entur nightly), otherwise they are written as JSON files under
-// TRAKPI_RESULTS_DIR (local runs and the OSS reference).
+// Wires the OTP implementations of the trakpi SPI to the CLI. KPI metrics stream into BigQuery when
+// TRAKPI_BQ_PROJECT is set (the Entur nightly), otherwise they are written as JSON files under
+// TRAKPI_RESULTS_DIR (local runs and the OSS reference). When TRAKPI_GCS_BUCKET is set, each result's
+// raw request/response is additionally archived to that bucket so later runs can compare against it.
 fun main(args: Array<String>) =
     runTrakpi(
         args,
@@ -30,18 +33,24 @@ fun main(args: Array<String>) =
                 MinTransfersKPICalculator(),
                 DepartureCountKPICalculator(),
             ),
-        resultsStorage = resultsStorage(),
+        resultsWriter = resultsWriter(),
     )
 
-private fun resultsStorage(): ResultsStorage {
-    val bqProject = System.getenv("TRAKPI_BQ_PROJECT")
-    return if (bqProject != null) {
-        BigQueryResultsStorage.create(
-            projectId = bqProject,
-            dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
-            table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
-        )
-    } else {
-        FileResultsStorage(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results"))
+private fun resultsWriter(): ResultsWriter {
+    val writers = buildList {
+        val bqProject = System.getenv("TRAKPI_BQ_PROJECT")
+        if (bqProject != null) {
+            add(
+                BigQueryResultsWriter.create(
+                    projectId = bqProject,
+                    dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
+                    table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
+                )
+            )
+        } else {
+            add(FileResultsWriter(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results")))
+        }
+        System.getenv("TRAKPI_GCS_BUCKET")?.let { add(GcsResultsWriter.create(it)) }
     }
+    return FanOutResultsWriter(writers)
 }

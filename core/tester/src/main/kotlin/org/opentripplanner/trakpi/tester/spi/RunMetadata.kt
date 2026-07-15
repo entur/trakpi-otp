@@ -18,7 +18,7 @@ data class RunMetadata(
     val application: String,
     val referenceVersion: String?,
     val isReferenceVersion: Boolean,
-    val testsetVersion: String?,
+    val testsetVersion: String,
     val startedAt: Instant,
 ) {
     companion object {
@@ -27,8 +27,8 @@ data class RunMetadata(
             version: String,
             application: String,
             startedAt: Instant,
+            testsetVersion: String,
             referenceVersion: String? = null,
-            testsetVersion: String? = null,
         ): RunMetadata =
             RunMetadata(
                 runId = "${version}_${startedAt.toString().replace(":", "")}",

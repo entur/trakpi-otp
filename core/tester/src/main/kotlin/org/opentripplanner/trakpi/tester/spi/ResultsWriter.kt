@@ -1,6 +1,6 @@
 package org.opentripplanner.trakpi.tester.spi
 
 /** Persists test results. */
-interface ResultsStorage {
+interface ResultsWriter {
     fun store(run: RunMetadata, result: TestCaseResult)
 }

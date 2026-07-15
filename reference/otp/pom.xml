@@ -15,6 +15,7 @@
         <trakpi.version>1.0.0-SNAPSHOT</trakpi.version>
         <storage.file.version>1.0.0-SNAPSHOT</storage.file.version>
         <storage.bigquery.version>1.0.0-SNAPSHOT</storage.bigquery.version>
+        <storage.gcs.version>1.0.0-SNAPSHOT</storage.gcs.version>
         <serialization.version>1.11.0</serialization.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -39,6 +40,11 @@
             <groupId>org.opentripplanner.trakpi</groupId>
             <artifactId>storage-bigquery</artifactId>
             <version>${storage.bigquery.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.opentripplanner.trakpi</groupId>
+            <artifactId>storage-gcs</artifactId>
+            <version>${storage.gcs.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>

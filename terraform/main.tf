@@ -39,6 +39,24 @@ resource "google_bigquery_table" "kpi_metrics" {
   }
 }
 
+# Archive of raw requests and responses, written by the nightly and read by later runs to compare a
+# candidate against a reference. The same bucket is shared for both requests and responses.
+# No lifecycle rule: baselines must persist so historical runs remain usable as references.
+resource "google_storage_bucket" "archive" {
+  name                        = "${module.init.app.project_id}-trakpi-archive"
+  project                     = module.init.app.project_id
+  location                    = "EU"
+  uniform_bucket_level_access = true
+  force_destroy               = false
+}
+
+# The nightly SA both writes archives and, on comparison runs, reads reference archives back.
+resource "google_storage_bucket_iam_member" "gha_object_admin" {
+  bucket = google_storage_bucket.archive.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.gha_service_account}"
+}
+
 resource "google_bigquery_dataset_iam_member" "gha_data_editor" {
   project    = module.init.app.project_id
   dataset_id = google_bigquery_dataset.kpi_tracking.dataset_id

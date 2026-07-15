@@ -8,7 +8,7 @@ import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
-class BigQueryResultsStorageTest {
+class BigQueryResultsWriterTest {
     private val run =
         RunMetadata.create(
             version = "dev",
@@ -21,6 +21,7 @@ class BigQueryResultsStorageTest {
     private fun result(kpis: List<Kpi>) =
         TestCaseResult(
             requestId = "request-001",
+            request = "{}",
             method = "trip",
             success = true,
             rawResponse = "{}",
@@ -30,7 +31,7 @@ class BigQueryResultsStorageTest {
 
     @Test
     fun `maps each KPI to one row carrying the run and request dimensions`() {
-        val rows = BigQueryResultsStorage.toRows(run, result(listOf(Kpi("routingTimeMs", 98.1), Kpi("itineraryCount", 5.0))))
+        val rows = BigQueryResultsWriter.toRows(run, result(listOf(Kpi("routingTimeMs", 98.1), Kpi("itineraryCount", 5.0))))
 
         assertEquals(2, rows.size)
         val row = rows.first()
@@ -59,7 +60,7 @@ class BigQueryResultsStorageTest {
 
     @Test
     fun `a result with no KPIs yields one dimension-only row`() {
-        val rows = BigQueryResultsStorage.toRows(run, result(emptyList()))
+        val rows = BigQueryResultsWriter.toRows(run, result(emptyList()))
 
         assertEquals(1, rows.size)
         assertEquals("${run.runId}:request-001", rows.first().insertId)

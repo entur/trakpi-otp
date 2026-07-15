@@ -18,6 +18,8 @@ jobs:
       TRAKPI_BQ_PROJECT: ent-trakpiotp-tst # TODO add per-environment configuration
       TRAKPI_BQ_DATASET: kpi_tracking
       TRAKPI_BQ_TABLE: kpi_metrics_v1
+      TRAKPI_GCS_BUCKET: ent-trakpiotp-tst-trakpi-archive
+      TRAKPI_TESTSET_VERSION: 2026-06-24
     steps:
       - uses: actions/checkout@v4
 
@@ -46,8 +48,11 @@ jobs:
       - name: Build and install the BigQuery storage adapter
         run: mvn -B -f storage/bigquery/pom.xml install
 
+      - name: Build and install the GCS storage adapter
+        run: mvn -B -f storage/gcs/pom.xml install
+
       - name: Build the OTP reference
         run: mvn -B -f reference/otp/pom.xml package
 
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
-        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --config reference/otp/trakpi.properties
+        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --testset-version "$TRAKPI_TESTSET_VERSION" --config reference/otp/trakpi.properties

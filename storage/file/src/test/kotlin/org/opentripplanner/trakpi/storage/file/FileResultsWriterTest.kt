@@ -18,12 +18,12 @@ import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
-class FileResultsStorageTest {
+class FileResultsWriterTest {
     @Test
     fun `writes a json file per result under a run subdirectory`() {
         val dir = Files.createTempDirectory("results")
         val clock = Clock.fixed(Instant.parse("2026-06-23T04:00:00Z"), ZoneOffset.UTC)
-        val storage = FileResultsStorage(dir, clock)
+        val storage = FileResultsWriter(dir, clock)
         val run =
             RunMetadata.create(
                 version = "dev",
@@ -37,6 +37,7 @@ class FileResultsStorageTest {
             run,
             TestCaseResult(
                 requestId = "request-1",
+                request = """{"query":"{ trip { tripPatterns } }"}""",
                 method = "trip",
                 success = true,
                 rawResponse = """{"data":{"trip":{"tripPatterns":[]}}}""",
@@ -55,6 +56,7 @@ class FileResultsStorageTest {
         assertEquals("dev", obj["referenceVersion"]!!.jsonPrimitive.content)
         assertEquals("testset-1", obj["testsetVersion"]!!.jsonPrimitive.content)
         assertEquals("request-1", obj["requestId"]!!.jsonPrimitive.content)
+        assertEquals("""{"query":"{ trip { tripPatterns } }"}""", obj["request"]!!.jsonPrimitive.content)
         assertEquals("trip", obj["method"]!!.jsonPrimitive.content)
         assertEquals(true, obj["success"]!!.jsonPrimitive.boolean)
         assertEquals("2026-06-23T04:00:00Z", obj["timestamp"]!!.jsonPrimitive.content)

@@ -17,7 +17,7 @@ import org.opentripplanner.trakpi.tester.RequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
-import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
@@ -29,7 +29,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
     requestLoader: RequestLoader<R>,
     travelPlanner: TravelPlanner<R>,
     kpiCalculators: List<KPICalculator>,
-    resultsStorage: ResultsStorage,
+    resultsWriter: ResultsWriter,
 ) {
     val orchestrator = Orchestrator()
     Trakpi()
@@ -37,7 +37,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
             Prepare(orchestrator),
             Start(orchestrator),
             Stop(orchestrator),
-            Test(application, requestLoader, travelPlanner, kpiCalculators, resultsStorage),
+            Test(application, requestLoader, travelPlanner, kpiCalculators, resultsWriter),
         )
         .main(args)
 }
@@ -78,7 +78,7 @@ internal class Test<R : TravelPlannerRequest>(
     private val requestLoader: RequestLoader<R>,
     private val travelPlanner: TravelPlanner<R>,
     private val kpiCalculators: List<KPICalculator>,
-    private val resultsStorage: ResultsStorage,
+    private val resultsWriter: ResultsWriter,
 ) : VersionedCommand("test") {
     override fun help(context: Context) = "Run a test. Assumes the planner is running and ready."
 
@@ -88,8 +88,8 @@ internal class Test<R : TravelPlannerRequest>(
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
     private val referenceVersion: String? by
         option("--reference-version", help = "Baseline version to compare against; marks this run as the reference when it matches --version")
-    private val testsetVersion: String? by
-        option("--testset-version", help = "Label of the request set being exercised")
+    private val testsetVersion: String by
+        option("--testset-version", help = "Label of the request set being exercised").required()
 
     // TODO: --version is not yet used by the engine; it will select the prepared planner build.
     override fun run() {
@@ -112,7 +112,7 @@ internal class Test<R : TravelPlannerRequest>(
                 requestLoader = requestLoader,
                 travelPlanner = travelPlanner,
                 kpiCalculators = kpiCalculators,
-                resultsStorage = resultsStorage,
+                resultsWriter = resultsWriter,
             )
             .run()
     }

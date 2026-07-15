@@ -5,19 +5,32 @@
 
     <!-- Standalone build: a consumer of the published trakpi core, not part of its reactor. -->
     <groupId>org.opentripplanner.trakpi</groupId>
-    <artifactId>storage-file</artifactId>
-    <name>Trakπ Storage: file</name>
-    <description>File-based adapter: a ResultsWriter that writes each result as a JSON file.</description>
+    <artifactId>storage-gcs</artifactId>
+    <name>Trakπ Storage: GCS</name>
+    <description>ResultsWriter adapter that archives each result's raw request/response as an object in a GCS bucket.</description>
     <version>1.0.0-SNAPSHOT</version>
 
     <properties>
         <java.version>25</java.version>
         <kotlin.version>2.3.21</kotlin.version>
         <trakpi.version>1.0.0-SNAPSHOT</trakpi.version>
-        <serialization.version>1.11.0</serialization.version>
+        <libraries.bom.version>26.50.0</libraries.bom.version>
         <junit.version>5.11.4</junit.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Manages google-cloud-storage and its transitive (gRPC/protobuf/guava) versions. -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${libraries.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -31,9 +44,8 @@
             <version>${trakpi.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.jetbrains.kotlinx</groupId>
-            <artifactId>kotlinx-serialization-json-jvm</artifactId>
-            <version>${serialization.version}</version>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
         </dependency>
 
         <!-- Test dependencies -->

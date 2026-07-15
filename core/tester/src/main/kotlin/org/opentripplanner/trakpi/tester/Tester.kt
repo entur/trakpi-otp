@@ -2,7 +2,7 @@ package org.opentripplanner.trakpi.tester
 
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
-import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
@@ -18,7 +18,7 @@ class Tester<R : TravelPlannerRequest>(
     private val requestLoader: RequestLoader<R>,
     private val travelPlanner: TravelPlanner<R>,
     private val kpiCalculators: List<KPICalculator>,
-    private val resultsStorage: ResultsStorage,
+    private val resultsWriter: ResultsWriter,
 ) {
     fun run() {
         val files = requestFileLoader.loadAll()
@@ -27,10 +27,11 @@ class Tester<R : TravelPlannerRequest>(
             val request = requestLoader.load(file)
             val response = travelPlanner.execute(request)
             val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
-            resultsStorage.store(
+            resultsWriter.store(
                 run,
                 TestCaseResult(
                     requestId = file.id,
+                    request = file.body,
                     method = response.method,
                     success = response.success,
                     rawResponse = response.raw,

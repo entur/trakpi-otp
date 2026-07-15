@@ -4,7 +4,7 @@ import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
-import org.opentripplanner.trakpi.tester.spi.ResultsStorage
+import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
@@ -17,7 +17,7 @@ import org.opentripplanner.trakpi.tester.spi.TestCaseResult
  * Assumes the table already exists with columns for every dimension and attribute.
  * Authenticates with Application Default Credentials.
  */
-class BigQueryResultsStorage(private val bigQuery: BigQuery, private val tableId: TableId) : ResultsStorage {
+class BigQueryResultsWriter(private val bigQuery: BigQuery, private val tableId: TableId) : ResultsWriter {
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
         val rows = toRows(run, result)
@@ -32,9 +32,9 @@ class BigQueryResultsStorage(private val bigQuery: BigQuery, private val tableId
 
     companion object {
         /** A storage that streams into `<projectId>.<dataset>.<table>` using Application Default Credentials. */
-        fun create(projectId: String, dataset: String, table: String): BigQueryResultsStorage {
+        fun create(projectId: String, dataset: String, table: String): BigQueryResultsWriter {
             val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
-            return BigQueryResultsStorage(bigQuery, TableId.of(projectId, dataset, table))
+            return BigQueryResultsWriter(bigQuery, TableId.of(projectId, dataset, table))
         }
 
         /**
@@ -51,7 +51,7 @@ class BigQueryResultsStorage(private val bigQuery: BigQuery, private val tableId
                     put("run_ts", run.startedAt.toString())
                     put("is_reference_version", run.isReferenceVersion)
                     run.referenceVersion?.let { put("reference_version", it) }
-                    run.testsetVersion?.let { put("testset_version", it) }
+                    put("testset_version", run.testsetVersion)
                     put("request_id", result.requestId)
                     put("method", result.method)
                     put("success", result.success)
