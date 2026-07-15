@@ -23,7 +23,7 @@ jobs:
       # TEMPORARY: run_id of the run to compare against (query BQ for it). Empty = no comparison.
       # Replaced by automatic reference discovery later. The question is how we want this to be done.
       # Should the SPI be aware of this mechanism? E.g. `trakpi find-reference-run`? Feels a bit foreign int the SPI.
-      TRAKPI_REFERENCE_RUN_ID: ""
+      TRAKPI_REFERENCE_RUN_ID: dev_2026-07-15T143219.169295795Z
     steps:
       - uses: actions/checkout@v4
 
