@@ -26,9 +26,16 @@ class FileResultsStorage(private val outputDir: Path, private val clock: Clock =
         val payload = buildJsonObject {
             put("runId", run.runId)
             put("version", run.version)
+            put("application", run.application)
+            put("isReferenceVersion", run.isReferenceVersion)
+            run.referenceVersion?.let { put("referenceVersion", it) }
+            run.testsetVersion?.let { put("testsetVersion", it) }
             put("requestId", result.requestId)
+            put("method", result.method)
+            put("success", result.success)
             put("timestamp", Instant.now(clock).toString())
             putJsonObject("kpis") { result.kpis.forEach { put(it.name, it.value) } }
+            putJsonObject("attributes") { result.attributes.forEach { (name, value) -> put(name, value) } }
             put("rawResponse", result.rawResponse)
         }
         runDir.resolve("${result.requestId}.json").writeText(json.encodeToString(JsonObject.serializer(), payload))

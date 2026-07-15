@@ -19,6 +19,7 @@ private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v
 fun main(args: Array<String>) =
     runTrakpi(
         args,
+        application = "otp",
         requestLoader = OtpRequestLoader(),
         travelPlanner = OTPTravelPlanner(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev"),
         kpiCalculators =

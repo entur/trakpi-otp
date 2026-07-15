@@ -25,6 +25,7 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 /** Runs the trakpi command-line interface, wiring the CLI to the supplied planner implementations. */
 fun <R : TravelPlannerRequest> runTrakpi(
     args: Array<String>,
+    application: String,
     requestLoader: RequestLoader<R>,
     travelPlanner: TravelPlanner<R>,
     kpiCalculators: List<KPICalculator>,
@@ -36,7 +37,7 @@ fun <R : TravelPlannerRequest> runTrakpi(
             Prepare(orchestrator),
             Start(orchestrator),
             Stop(orchestrator),
-            Test(requestLoader, travelPlanner, kpiCalculators, resultsStorage),
+            Test(application, requestLoader, travelPlanner, kpiCalculators, resultsStorage),
         )
         .main(args)
 }
@@ -73,6 +74,7 @@ internal class Stop(private val orchestrator: Orchestrator) : VersionedCommand("
 }
 
 internal class Test<R : TravelPlannerRequest>(
+    private val application: String,
     private val requestLoader: RequestLoader<R>,
     private val travelPlanner: TravelPlanner<R>,
     private val kpiCalculators: List<KPICalculator>,
@@ -84,6 +86,10 @@ internal class Test<R : TravelPlannerRequest>(
         option("--config", help = "Path to a trakpi config file (.properties)").path(mustExist = true, canBeDir = false)
     private val overrides: Map<String, String> by
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
+    private val referenceVersion: String? by
+        option("--reference-version", help = "Baseline version to compare against; marks this run as the reference when it matches --version")
+    private val testsetVersion: String? by
+        option("--testset-version", help = "Label of the request set being exercised")
 
     // TODO: --version is not yet used by the engine; it will select the prepared planner build.
     override fun run() {
@@ -94,7 +100,14 @@ internal class Test<R : TravelPlannerRequest>(
                 throw UsageError(e.message ?: "Invalid configuration")
             }
         Tester(
-                run = RunMetadata.create(version = version, startedAt = Instant.now()),
+                run =
+                    RunMetadata.create(
+                        version = version,
+                        application = application,
+                        startedAt = Instant.now(),
+                        referenceVersion = referenceVersion,
+                        testsetVersion = testsetVersion,
+                    ),
                 requestFileLoader = RequestFileLoader(config.requestsDir),
                 requestLoader = requestLoader,
                 travelPlanner = travelPlanner,

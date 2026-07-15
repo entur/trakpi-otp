@@ -19,10 +19,18 @@ resource "google_bigquery_table" "kpi_metrics" {
   schema = jsonencode([
     { name = "run_id", type = "STRING", mode = "REQUIRED" },
     { name = "version", type = "STRING", mode = "REQUIRED" },
+    { name = "application", type = "STRING", mode = "NULLABLE" },
     { name = "run_ts", type = "TIMESTAMP", mode = "REQUIRED" },
+    { name = "is_reference_version", type = "BOOL", mode = "NULLABLE" },
+    { name = "reference_version", type = "STRING", mode = "NULLABLE" },
+    { name = "testset_version", type = "STRING", mode = "NULLABLE" },
     { name = "request_id", type = "STRING", mode = "REQUIRED" },
-    { name = "kpi_name", type = "STRING", mode = "REQUIRED" },
-    { name = "value", type = "FLOAT64", mode = "REQUIRED" },
+    { name = "method", type = "STRING", mode = "NULLABLE" },
+    { name = "success", type = "BOOL", mode = "NULLABLE" },
+    { name = "http_status_code", type = "STRING", mode = "NULLABLE" },
+    { name = "http_status_class", type = "STRING", mode = "NULLABLE" },
+    { name = "kpi_name", type = "STRING", mode = "NULLABLE" },
+    { name = "value", type = "FLOAT64", mode = "NULLABLE" },
   ])
 
   time_partitioning {

@@ -27,7 +27,17 @@ class Tester<R : TravelPlannerRequest>(
             val request = requestLoader.load(file)
             val response = travelPlanner.execute(request)
             val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
-            resultsStorage.store(run, TestCaseResult(file.id, response.raw, kpis))
+            resultsStorage.store(
+                run,
+                TestCaseResult(
+                    requestId = file.id,
+                    method = response.method,
+                    success = response.success,
+                    rawResponse = response.raw,
+                    attributes = response.attributes,
+                    kpis = kpis,
+                ),
+            )
             println("${kpis.size} KPI(s)")
         }
         println("Done: ${files.size} request(s).")
