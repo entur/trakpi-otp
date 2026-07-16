@@ -8,7 +8,7 @@ import org.opentripplanner.trakpi.tester.spi.RunMetadata
 class GcsResultsWriterTest {
     private val run =
         RunMetadata.create(
-            version = "dev",
+            version = "2.10.0-entur-134",
             application = "otp",
             startedAt = Instant.parse("2026-07-08T04:00:00Z"),
             testsetVersion = "testset-1",
@@ -21,7 +21,7 @@ class GcsResultsWriterTest {
     }
 
     @Test
-    fun `keys a response by testset, run and request`() {
-        assertEquals("results/testset-1/${run.runId}/request-001", GcsResultsWriter.responseObjectName(run, "request-001"))
+    fun `keys a response by testset, build version and request`() {
+        assertEquals("results/testset-1/2.10.0-entur-134/request-001", GcsResultsWriter.responseObjectName(run, "request-001"))
     }
 }

@@ -13,8 +13,8 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**
  * Runs a test: loads each request file, executes it against the travel planner, computes the KPIs
- * that apply to the response, and stores the result under the given [run]. When [referenceRunId] is
- * set, that run's stored responses are read once via [resultsReader] and each
+ * that apply to the response, and stores the result under the given [run]. When [referenceVersion] is
+ * set, that build's reference responses are read once via [resultsReader] and each
  * [comparativeKpiCalculators] entry compares this response against the matching reference response.
  */
 class Tester<R : TravelPlannerRequest>(
@@ -26,12 +26,13 @@ class Tester<R : TravelPlannerRequest>(
     private val resultsWriter: ResultsWriter,
     private val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
     private val resultsReader: ResultsReader? = null,
-    private val referenceRunId: String? = null,
+    private val referenceVersion: String? = null,
 ) {
     fun run() {
         val files = requestFileLoader.loadAll()
         val reference: Map<String, TravelPlannerResponse> =
-            if (referenceRunId != null && resultsReader != null) resultsReader.responsesForRun(run.testsetVersion, referenceRunId)
+            if (referenceVersion != null && resultsReader != null)
+                resultsReader.referenceResponses(referenceVersion, run.testsetVersion)
             else emptyMap()
         files.forEachIndexed { index, file ->
             print("[${index + 1}/${files.size}] ${file.id} ... ")

@@ -93,9 +93,7 @@ internal class Test<R : TravelPlannerRequest>(
     private val overrides: Map<String, String> by
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
     private val referenceVersion: String? by
-        option("--reference-version", help = "Baseline version to compare against; marks this run as the reference when it matches --version")
-    private val referenceRunId: String? by
-        option("--reference-run-id", help = "run_id of a prior run whose KPIs comparative calculators compare against (temporary handle until reference discovery lands)")
+        option("--reference-version", help = "Baseline version to compare against")
     private val testsetVersion: String by
         option("--testset-version", help = "Label of the request set being exercised").required()
 
@@ -123,7 +121,7 @@ internal class Test<R : TravelPlannerRequest>(
                 resultsWriter = resultsWriter,
                 comparativeKpiCalculators = comparativeKpiCalculators,
                 resultsReader = resultsReader,
-                referenceRunId = referenceRunId?.takeIf { it.isNotBlank() },
+                referenceVersion = referenceVersion?.takeIf { it.isNotBlank() },
             )
             .run()
     }

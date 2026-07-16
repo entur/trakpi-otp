@@ -6,13 +6,14 @@ import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**
- * Reads a run's archived responses back from the GCS bucket written by [GcsResultsWriter], keyed by
- * requestId. Authenticates with Application Default Credentials.
+ * Reads a reference build's archived responses back from the GCS bucket written by [GcsResultsWriter],
+ * keyed by requestId. The build version addresses the responses directly — no run lookup.
+ * Authenticates with Application Default Credentials.
  */
 class GcsResultsReader(private val storage: Storage, private val bucket: String) : ResultsReader {
 
-    override fun responsesForRun(testsetVersion: String, runId: String): Map<String, TravelPlannerResponse> {
-        val prefix = GcsResultsWriter.resultsPrefix(testsetVersion, runId)
+    override fun referenceResponses(version: String, testsetVersion: String): Map<String, TravelPlannerResponse> {
+        val prefix = GcsResultsWriter.resultsPrefix(testsetVersion, version)
         val byRequest = HashMap<String, TravelPlannerResponse>()
         for (blob in storage.list(bucket, Storage.BlobListOption.prefix(prefix)).iterateAll()) {
             val requestId = blob.name.removePrefix(prefix)

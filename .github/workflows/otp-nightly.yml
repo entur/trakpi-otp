@@ -20,12 +20,30 @@ jobs:
       TRAKPI_BQ_TABLE: kpi_metrics_v1
       TRAKPI_GCS_BUCKET: ent-trakpiotp-tst-trakpi-archive
       TRAKPI_TESTSET_VERSION: 2026-06-24
-      # TEMPORARY: run_id of the run to compare against (query BQ for it). Empty = no comparison.
-      # Replaced by automatic reference discovery later. The question is how we want this to be done.
-      # Should the SPI be aware of this mechanism? E.g. `trakpi find-reference-run`? Feels a bit foreign int the SPI.
-      TRAKPI_REFERENCE_RUN_ID: dev_2026-07-15T143219.169295795Z
+      # TEMPORARILY HARDCODED: Baseline build to compare against. The run representing it is resolved from stored results.
+      # Empty = no comparison. Bump this when a new build should become the baseline.
+      TRAKPI_REFERENCE_VERSION: 2.10.0-entur-133
+      # OTP dev endpoint. Used to resolve the deployed version under test.
+      OTP_ENDPOINT: https://api.dev.entur.io/journey-planner/v3/graphql
+      OTP_CLIENT_NAME: entur-trakpi-dev
     steps:
       - uses: actions/checkout@v4
+
+      # Resolve the version under test up front, straight from the OTP dev API, and pass it to the run
+      # as --version. Fails fast if the endpoint is unreachable so we don't record a run with no version.
+      - name: Resolve OTP version under test
+        id: otp
+        run: |
+          resp=$(curl -sf -m 30 -X POST "$OTP_ENDPOINT" \
+            -H 'Content-Type: application/json' -H "ET-Client-Name: $OTP_CLIENT_NAME" \
+            -d '{"query":"{ serverInfo { version gitCommit } }"}')
+          version=$(printf '%s' "$resp" | jq -r '.data.serverInfo.version // empty')
+          if [ -z "$version" ]; then
+            echo "Could not resolve OTP version from response: $resp" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "OTP version under test: $version"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -59,4 +77,4 @@ jobs:
         run: mvn -B -f reference/otp/pom.xml package
 
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
-        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version dev --testset-version "$TRAKPI_TESTSET_VERSION" --reference-run-id "$TRAKPI_REFERENCE_RUN_ID" --config reference/otp/trakpi.properties
+        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "$TRAKPI_REFERENCE_VERSION" --config reference/otp/trakpi.properties

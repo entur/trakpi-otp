@@ -11,9 +11,10 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**
  * Archives each result's raw request and its response in a GCS bucket so a later run can read a
- * reference run's response and compare against it. The request is stored raw; the response is stored
- * as a serialized [TravelPlannerResponse] (raw body + success + method + attributes) so it round-trips.
- * Authenticates with Application Default Credentials.
+ * reference build's response and compare against it. The request is stored raw under the testset; the
+ * response is stored as a serialized [TravelPlannerResponse] (raw body + success + method + attributes)
+ * keyed by build version, so `--reference-version` addresses it directly. Re-running a build overwrites
+ * its responses (latest wins). Authenticates with Application Default Credentials.
  */
 class GcsResultsWriter(private val storage: Storage, private val bucket: String) : ResultsWriter {
 
@@ -36,11 +37,11 @@ class GcsResultsWriter(private val storage: Storage, private val bucket: String)
         internal fun requestObjectName(run: RunMetadata, requestId: String): String =
             "requests/${run.testsetVersion}/$requestId"
 
-        /** Object-name prefix holding one run's responses. */
-        internal fun resultsPrefix(testsetVersion: String, runId: String): String = "results/$testsetVersion/$runId/"
+        /** Object-name prefix holding a build's responses for a testset. */
+        internal fun resultsPrefix(testsetVersion: String, version: String): String = "results/$testsetVersion/$version/"
 
-        /** Key for a response (one per run). */
+        /** Key for a response, addressed by the build [RunMetadata.version] so it's findable by reference version. */
         internal fun responseObjectName(run: RunMetadata, requestId: String): String =
-            resultsPrefix(run.testsetVersion, run.runId) + requestId
+            resultsPrefix(run.testsetVersion, run.version) + requestId
     }
 }
