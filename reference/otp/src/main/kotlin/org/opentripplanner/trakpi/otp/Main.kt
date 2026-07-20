@@ -7,9 +7,12 @@ import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
+import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
+import org.opentripplanner.trakpi.otp.testset.transforms.EnsureKpiFields
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
+import org.opentripplanner.trakpi.storage.file.FileTestsetStore
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsReader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
 import org.opentripplanner.trakpi.tester.FanOutResultsWriter
@@ -22,24 +25,32 @@ private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v
 // TRAKPI_BQ_PROJECT is set (the Entur nightly), otherwise they are written as JSON files under
 // TRAKPI_RESULTS_DIR (local runs and the OSS reference). When TRAKPI_GCS_BUCKET is set, each result's
 // raw request/response is additionally archived to that bucket so later runs can compare against it.
-fun main(args: Array<String>) =
+fun main(args: Array<String>) {
+    // The KPIs drive both scoring and which fields the testset must request, so they are declared once
+    // and shared: adding a KPI here is enough to pull the fields it reads into prepared requests.
+    val kpiCalculators =
+        listOf(
+            ItineraryCountKPICalculator(),
+            RoutingTimeKPICalculator(),
+            FastestItineraryKPICalculator(),
+            MinTransfersKPICalculator(),
+            DepartureCountKPICalculator(),
+        )
     runTrakpi(
         args,
         application = "otp",
         requestLoader = OtpRequestLoader(),
         travelPlanner = OTPTravelPlanner(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev"),
-        kpiCalculators =
-            listOf(
-                ItineraryCountKPICalculator(),
-                RoutingTimeKPICalculator(),
-                FastestItineraryKPICalculator(),
-                MinTransfersKPICalculator(),
-                DepartureCountKPICalculator(),
-            ),
+        kpiCalculators = kpiCalculators,
         resultsWriter = resultsWriter(),
         comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
         resultsReader = resultsReader(),
+        api = "transmodel",
+        requestCodec = OtpRequestCodec,
+        transforms = listOf(EnsureKpiFields(kpiCalculators)),
+        testsetStore = FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets")),
     )
+}
 
 private fun resultsReader(): ResultsReader? {
     val bucket = System.getenv("TRAKPI_GCS_BUCKET") ?: return null

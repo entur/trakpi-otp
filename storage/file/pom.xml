@@ -31,6 +31,11 @@
             <version>${trakpi.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.opentripplanner.trakpi</groupId>
+            <artifactId>testset</artifactId>
+            <version>${trakpi.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-serialization-json-jvm</artifactId>
             <version>${serialization.version}</version>

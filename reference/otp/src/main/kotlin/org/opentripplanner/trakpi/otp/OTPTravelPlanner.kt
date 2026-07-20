@@ -22,7 +22,12 @@ class OTPTravelPlanner(
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
 
     override fun execute(request: OtpTravelPlannerRequest): TravelPlannerResponse {
-        val body = buildJsonObject { put("query", JsonPrimitive(request.query)) }.toString()
+        val body =
+            buildJsonObject {
+                    put("query", JsonPrimitive(request.query))
+                    request.variables?.let { put("variables", it) }
+                }
+                .toString()
         val httpRequest =
             HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))

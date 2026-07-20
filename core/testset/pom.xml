@@ -10,30 +10,14 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>trakpi</artifactId>
-    <name>Trakπ</name>
-    <description>The command-line surface and public entry point, on top of the engine and lifecycle.</description>
+    <artifactId>testset</artifactId>
+    <name>Trakπ Testset</name>
+    <description>Prepares and stores the versioned request sets a planner is tested against.</description>
 
     <dependencies>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.ajalt.clikt</groupId>
-            <artifactId>clikt-jvm</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.opentripplanner.trakpi</groupId>
-            <artifactId>tester</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.opentripplanner.trakpi</groupId>
-            <artifactId>testset</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.opentripplanner.trakpi</groupId>
-            <artifactId>orchestrator</artifactId>
         </dependency>
 
         <!-- Test dependencies -->

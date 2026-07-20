@@ -4,12 +4,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.otp.tripPatterns
-import org.opentripplanner.trakpi.tester.spi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /** Fewest transfers across the returned itineraries (transit legs minus one); null when the response has no itineraries. */
-class MinTransfersKPICalculator : KPICalculator {
+class MinTransfersKPICalculator : OtpKPICalculator {
+    override val requiredFields = RequiredFields(setOf("trip"), "{ tripPatterns { legs { mode } } }")
+
     override fun calculate(response: TravelPlannerResponse): Kpi? {
         val transfers =
             response.tripPatterns().map { tp ->
