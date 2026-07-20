@@ -30,40 +30,52 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
- * Runs the trakpi command-line interface, wiring the CLI to the supplied planner implementations.
- * [api] names the request format the planner speaks (used to scope testsets); it defaults to
- * [application]. The `testset` command group is available when a [testsetStore] is supplied.
+ * The runtime side of a planner integration: what the `test` command needs to run a planner build and
+ * score its responses. (The `prepare`/`start`/`stop` lifecycle commands need no configuration.)
+ */
+class TesterConfig<R : TravelPlannerRequest>(
+    val requestLoader: RequestLoader<R>,
+    val travelPlanner: TravelPlanner<R>,
+    val kpiCalculators: List<KPICalculator>,
+    val resultsWriter: ResultsWriter,
+    val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
+    val resultsReader: ResultsReader? = null,
+)
+
+/**
+ * The testset side of a planner integration: what's needed to build and store the versioned request
+ * sets a planner is tested against. [api] names the request format the planner speaks (scopes
+ * testsets). Supplying it to [runTrakpi] enables the `testset` commands.
+ */
+class TestsetConfig<T>(
+    val api: String,
+    val source: TestsetSource? = null,
+    val codec: RequestCodec<T>? = null,
+    val transforms: List<RequestTransform<T>> = emptyList(),
+    val store: TestsetStore? = null,
+)
+
+/**
+ * Runs the trakpi command-line interface. Every command is always present so `trakpi` documents itself:
+ * `prepare`/`start`/`stop` need no configuration, while `test` and the `testset` commands explain when
+ * their [tester]/[testset] is not configured. A planner integration supplies whichever side(s) it
+ * supports — the OTP one supplies both.
  */
 fun <R : TravelPlannerRequest, T> runTrakpi(
     args: Array<String>,
     application: String,
-    requestLoader: RequestLoader<R>,
-    travelPlanner: TravelPlanner<R>,
-    kpiCalculators: List<KPICalculator>,
-    resultsWriter: ResultsWriter,
-    comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
-    resultsReader: ResultsReader? = null,
-    api: String = application,
-    testsetSource: TestsetSource? = null,
-    requestCodec: RequestCodec<T>? = null,
-    transforms: List<RequestTransform<T>> = emptyList(),
-    testsetStore: TestsetStore? = null,
+    tester: TesterConfig<R>? = null,
+    testset: TestsetConfig<T>? = null,
 ) {
     val orchestrator = Orchestrator()
     val commands =
-        buildList {
-            add(Prepare(orchestrator))
-            add(Start(orchestrator))
-            add(Stop(orchestrator))
-            add(Test(application, requestLoader, travelPlanner, kpiCalculators, resultsWriter, comparativeKpiCalculators, resultsReader))
-            add(
-                Testset()
-                    .subcommands(
-                        Testset.List(api, testsetStore),
-                        Testset.Prepare(api, testsetSource, requestCodec, transforms, testsetStore),
-                    )
-            )
-        }
+        listOf(
+            Prepare(orchestrator),
+            Start(orchestrator),
+            Stop(orchestrator),
+            Test(application, tester),
+            Testset().subcommands(Testset.List(testset), Testset.Prepare(testset)),
+        )
     Trakpi().subcommands(commands).main(args)
 }
 
@@ -100,12 +112,7 @@ internal class Stop(private val orchestrator: Orchestrator) : VersionedCommand("
 
 internal class Test<R : TravelPlannerRequest>(
     private val application: String,
-    private val requestLoader: RequestLoader<R>,
-    private val travelPlanner: TravelPlanner<R>,
-    private val kpiCalculators: List<KPICalculator>,
-    private val resultsWriter: ResultsWriter,
-    private val comparativeKpiCalculators: List<ComparativeKPICalculator>,
-    private val resultsReader: ResultsReader?,
+    private val tester: TesterConfig<R>?,
 ) : VersionedCommand("test") {
     override fun help(context: Context) = "Run a test. Assumes the planner is running and ready."
 
@@ -120,6 +127,7 @@ internal class Test<R : TravelPlannerRequest>(
 
     // TODO: --version is not yet used by the engine; it will select the prepared planner build.
     override fun run() {
+        val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
         val config =
             try {
                 TrakpiConfigLoader.load(configFile = configFile, overrides = overrides)
@@ -136,12 +144,12 @@ internal class Test<R : TravelPlannerRequest>(
                         testsetVersion = testsetVersion,
                     ),
                 requestFileLoader = RequestFileLoader(config.requestsDir),
-                requestLoader = requestLoader,
-                travelPlanner = travelPlanner,
-                kpiCalculators = kpiCalculators,
-                resultsWriter = resultsWriter,
-                comparativeKpiCalculators = comparativeKpiCalculators,
-                resultsReader = resultsReader,
+                requestLoader = tester.requestLoader,
+                travelPlanner = tester.travelPlanner,
+                kpiCalculators = tester.kpiCalculators,
+                resultsWriter = tester.resultsWriter,
+                comparativeKpiCalculators = tester.comparativeKpiCalculators,
+                resultsReader = tester.resultsReader,
                 referenceVersion = referenceVersion?.takeIf { it.isNotBlank() },
             )
             .run()
@@ -153,34 +161,29 @@ internal class Testset : CliktCommand(name = "testset") {
 
     override fun run() = Unit
 
-    class List(private val api: String, private val store: TestsetStore?) : CliktCommand(name = "list") {
+    class List(private val config: TestsetConfig<*>?) : CliktCommand(name = "list") {
         override fun help(context: Context) = "List the available testset versions for this planner's api."
 
         override fun run() {
-            val store = store ?: throw UsageError("No testset store configured for this planner.")
-            val versions = store.versions(api)
-            if (versions.isEmpty()) echo("No testsets for api '$api'.")
+            val config = config ?: throw UsageError("Testsets are not configured for this planner.")
+            val store = config.store ?: throw UsageError("No testset store configured for this planner.")
+            val versions = store.versions(config.api)
+            if (versions.isEmpty()) echo("No testsets for api '${config.api}'.")
             else versions.forEach { echo(it) }
         }
     }
 
-    class Prepare<T>(
-        private val api: String,
-        private val source: TestsetSource?,
-        private val codec: RequestCodec<T>?,
-        // kotlin.collections.List: the nested `List` command above shadows the bare name in this scope.
-        private val transforms: kotlin.collections.List<RequestTransform<T>>,
-        private val store: TestsetStore?,
-    ) : CliktCommand(name = "prepare") {
+    class Prepare<T>(private val config: TestsetConfig<T>?) : CliktCommand(name = "prepare") {
         override fun help(context: Context) = "Prepare a new testset: source raw requests, clean them, and store them under --version."
 
         private val version: String by option("--version", help = "Version label for the new testset, e.g. the ISO date").required()
 
         override fun run() {
-            val source = source ?: throw UsageError("No testset source configured for this planner.")
-            val codec = codec ?: throw UsageError("No request codec configured for this planner.")
-            val store = store ?: throw UsageError("No testset store configured for this planner.")
-            val testset = TestsetBuilder(source, codec, transforms, store).prepare(api, version)
+            val config = config ?: throw UsageError("Testsets are not configured for this planner.")
+            val source = config.source ?: throw UsageError("No testset source configured for this planner.")
+            val codec = config.codec ?: throw UsageError("No request codec configured for this planner.")
+            val store = config.store ?: throw UsageError("No testset store configured for this planner.")
+            val testset = TestsetBuilder(source, codec, config.transforms, store).prepare(config.api, version)
             echo("Prepared testset ${testset.api}/${testset.version}: ${testset.requests.size} request(s).")
         }
     }

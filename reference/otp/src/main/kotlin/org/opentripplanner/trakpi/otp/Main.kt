@@ -11,6 +11,8 @@ import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
 import org.opentripplanner.trakpi.otp.testset.transforms.EnsureKpiFields
 import org.opentripplanner.trakpi.otp.testset.transforms.ObfuscateCoordinates
 import org.opentripplanner.trakpi.otp.testset.transforms.OtpStationSnapper
+import org.opentripplanner.trakpi.TesterConfig
+import org.opentripplanner.trakpi.TestsetConfig
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
@@ -41,20 +43,27 @@ fun main(args: Array<String>) {
     runTrakpi(
         args,
         application = "otp",
-        requestLoader = OtpRequestLoader(),
-        travelPlanner = OTPTravelPlanner(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev"),
-        kpiCalculators = kpiCalculators,
-        resultsWriter = resultsWriter(),
-        comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
-        resultsReader = resultsReader(),
-        api = "transmodel",
-        requestCodec = OtpRequestCodec,
-        transforms =
-            listOf(
-                ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
-                EnsureKpiFields(kpiCalculators),
+        tester =
+            TesterConfig(
+                requestLoader = OtpRequestLoader(),
+                travelPlanner = OTPTravelPlanner(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev"),
+                kpiCalculators = kpiCalculators,
+                resultsWriter = resultsWriter(),
+                comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
+                resultsReader = resultsReader(),
             ),
-        testsetStore = FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets")),
+        testset =
+            TestsetConfig(
+                api = "transmodel",
+                // source (the BigQuery prod-request fetch) is not wired yet.
+                codec = OtpRequestCodec,
+                transforms =
+                    listOf(
+                        ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
+                        EnsureKpiFields(kpiCalculators),
+                    ),
+                store = FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets")),
+            ),
     )
 }
 
