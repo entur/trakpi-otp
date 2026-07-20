@@ -1,6 +1,7 @@
 package org.opentripplanner.trakpi.otp.testset.transforms
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
@@ -9,6 +10,7 @@ import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequest
+import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
 import org.opentripplanner.trakpi.testset.Request
 
 class EnsureKpiFieldsTest {
@@ -45,5 +47,17 @@ class EnsureKpiFieldsTest {
         val body = "{ nearest(latitude: 59.9, longitude: 10.7) { edges { node { distance } } } }"
         assertFalse("estimatedCalls" in apply(body), body)
         assertFalse("debugOutput" in apply(body), body)
+    }
+
+    @Test
+    fun `merges into a fragment-contributed field once the request is deserialized`() {
+        // The codec inlines fragments on deserialize, so the merge sees estimatedCalls despite the spread.
+        val request =
+            OtpRequestCodec.deserialize(
+                Request("r", "{ quay(id: \"1\") { ...q } } fragment q on Quay { estimatedCalls(numberOfDepartures: 10) { aimedDepartureTime } }")
+            )
+        val out = transform.apply(request).toRequest().body
+        assertTrue("realtime" in out, out)
+        assertEquals(1, out.split("estimatedCalls").size - 1, "expected exactly one estimatedCalls in:\n$out")
     }
 }

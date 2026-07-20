@@ -3,6 +3,8 @@ package org.opentripplanner.trakpi.otp.graphql
 import graphql.language.AstPrinter
 import graphql.parser.Parser
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -11,6 +13,8 @@ class GraphQlUtilTest {
 
     private fun merged(query: String, roots: Set<String>, required: String): String =
         AstPrinter.printAst(GraphQlUtil.mergeFields(Parser().parseDocument(query), roots, required))
+
+    private fun count(haystack: String, needle: String): Int = haystack.split(needle).size - 1
 
     @Test
     fun `appends the required selection to a named root field, staying valid GraphQL`() {
@@ -43,5 +47,30 @@ class GraphQlUtilTest {
     fun `handles a variable-based query`() {
         val out = merged("query(\$from: Location!) { trip(from: \$from) { tripPatterns { startTime } } }", setOf("trip"), tripFields)
         assertTrue("debugOutput" in out, out)
+    }
+
+    @Test
+    fun `merges the missing leaves into an existing field instead of adding a conflicting twin`() {
+        val out =
+            merged("{ quay(id: \"1\") { estimatedCalls(numberOfDepartures: 10) { aimedDepartureTime } } }", setOf("quay"), "{ estimatedCalls { realtime } }")
+        Parser().parseDocument(out)
+        assertEquals(1, count(out, "estimatedCalls"), "expected exactly one estimatedCalls in:\n$out")
+        assertTrue("numberOfDepartures" in out, out) // the original arguments are preserved
+        assertTrue("realtime" in out, out)
+    }
+
+    @Test
+    fun `does not duplicate a field already present`() {
+        val out = merged("{ trip(from: {place: \"A\"}) { tripPatterns { startTime } } }", setOf("trip"), tripFields)
+        assertEquals(1, count(out, "tripPatterns"), "expected exactly one tripPatterns in:\n$out")
+        listOf("startTime", "duration", "legs").forEach { assertTrue(it in out, "expected '$it' in:\n$out") }
+    }
+
+    @Test
+    fun `refuses to merge into a field hidden under an inline-fragment type condition`() {
+        val query = "{ quay(id: \"1\") { ... on Quay { estimatedCalls { aimedDepartureTime } } } }"
+        assertFailsWith<IllegalArgumentException> {
+            GraphQlUtil.mergeFields(Parser().parseDocument(query), setOf("quay"), "{ estimatedCalls { realtime } }")
+        }
     }
 }
