@@ -20,6 +20,9 @@ class OtpRequest(
     /** A copy with the query AST replaced by [transform] applied to it. */
     fun mapAst(transform: (Document) -> Document): OtpRequest = OtpRequest(id, transform(document), variables)
 
+    /** A copy with the GraphQL [variables] replaced by [transform] applied to them. */
+    fun mapVariables(transform: (JsonElement?) -> JsonElement?): OtpRequest = OtpRequest(id, document, transform(variables))
+
     /** Renders this request back to its stored [Request] form, printing the query once. */
     fun toRequest(): Request = Request(id, OtpRequestBody(AstPrinter.printAst(document), variables).serialize())
 

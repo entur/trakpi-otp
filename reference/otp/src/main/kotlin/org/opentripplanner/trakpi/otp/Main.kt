@@ -9,6 +9,8 @@ import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
 import org.opentripplanner.trakpi.otp.testset.transforms.EnsureKpiFields
+import org.opentripplanner.trakpi.otp.testset.transforms.ObfuscateCoordinates
+import org.opentripplanner.trakpi.otp.testset.transforms.OtpStationSnapper
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
@@ -47,7 +49,11 @@ fun main(args: Array<String>) {
         resultsReader = resultsReader(),
         api = "transmodel",
         requestCodec = OtpRequestCodec,
-        transforms = listOf(EnsureKpiFields(kpiCalculators)),
+        transforms =
+            listOf(
+                ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
+                EnsureKpiFields(kpiCalculators),
+            ),
         testsetStore = FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets")),
     )
 }
