@@ -15,13 +15,18 @@ import org.opentripplanner.trakpi.TesterConfig
 import org.opentripplanner.trakpi.TestsetConfig
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
+import org.opentripplanner.trakpi.storage.bigquery.BigQueryTestsetSource
+import org.opentripplanner.trakpi.storage.bigquery.RequestEnvironment
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileTestsetStore
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsReader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
+import org.opentripplanner.trakpi.storage.gcs.GcsTestsetStore
 import org.opentripplanner.trakpi.tester.FanOutResultsWriter
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
+import org.opentripplanner.trakpi.testset.TestsetSource
+import org.opentripplanner.trakpi.testset.TestsetStore
 
 private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v3/graphql"
 
@@ -55,16 +60,33 @@ fun main(args: Array<String>) {
         testset =
             TestsetConfig(
                 api = "transmodel",
-                // source (the BigQuery prod-request fetch) is not wired yet.
+                source = testsetSource(),
                 codec = OtpRequestCodec,
                 transforms =
                     listOf(
                         ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
                         EnsureKpiFields(kpiCalculators),
                     ),
-                store = FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets")),
+                store = testsetStore(),
             ),
     )
+}
+
+/**
+ * The source of raw requests for `testset prepare`
+ */
+private fun testsetSource(): TestsetSource? {
+    val environment = System.getenv("TRAKPI_REQUESTS_ENV") ?: return null
+    return BigQueryTestsetSource.create(
+        environment = RequestEnvironment.valueOf(environment.uppercase()),
+        sampleSize = System.getenv("TRAKPI_REQUESTS_SAMPLE_SIZE")?.toInt() ?: 1000,
+    )
+}
+
+/** Where prepared testsets are stored: a GCS bucket when TRAKPI_GCS_BUCKET is set, otherwise local files. */
+private fun testsetStore(): TestsetStore {
+    System.getenv("TRAKPI_GCS_BUCKET")?.let { return GcsTestsetStore.create(it) }
+    return FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets"))
 }
 
 private fun resultsReader(): ResultsReader? {

@@ -107,9 +107,26 @@ Running `trakpi test` without first running `trakpi start` triggers a full `star
 
 Only a single instance can be started at a time.
 
+## Usage - Preparing a testset
+A testset is the versioned set of requests a planner is tested against — its label is passed to
+`trakpi test --testset-version <label>`. Build and inspect testsets with:
+
+```bash
+# Source raw requests, clean them, and store them under a version label
+trakpi testset prepare --version 2026-07-21
+
+# List the stored testset versions
+trakpi testset list
+```
+
+Where requests come from, the transforms applied while cleaning them, and where testsets are stored
+are all supplied by the planner integration — see the integration's own docs (e.g. the OTP
+reference) for how they are configured.
+
 ## Usage - Inspecting results
 Each `trakpi test` run writes one JSON file per request to `results/<runId>/<requestId>.json` (the
-`FileResultsWriter` default; override the directory with `TRAKPI_RESULTS_DIR`). Each file holds the
+`FileResultsWriter` default; the output location is configured by the integration — see its docs).
+Each file holds the
 run metadata, the raw planner response, and the computed KPIs under `kpis`. Read them however you
 like — [`jq`](https://jqlang.github.io/jq/) is handy for quick aggregates. For example, to average
 the `routingTimeMs` KPI across a run:

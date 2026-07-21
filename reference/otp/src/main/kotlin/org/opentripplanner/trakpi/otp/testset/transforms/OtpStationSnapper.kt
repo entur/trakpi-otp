@@ -24,6 +24,7 @@ class OtpStationSnapper(private val endpoint: String, private val clientName: St
     override fun snap(coordinate: Coordinate): Coordinate = index.snap(coordinate)
 
     private fun fetchStations(): List<Coordinate> {
+        println("Fetching transit stations from $endpoint ...")
         val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
         val request =
             HttpRequest.newBuilder()
@@ -37,12 +38,15 @@ class OtpStationSnapper(private val endpoint: String, private val clientName: St
         val stopPlaces =
             Json.parseToJsonElement(body).jsonObject["data"]?.jsonObject?.get("stopPlaces") as? JsonArray
                 ?: error("No stopPlaces in response from $endpoint")
-        return stopPlaces.mapNotNull { element ->
-            val obj = element as? JsonObject ?: return@mapNotNull null
-            val latitude = (obj["latitude"] as? JsonPrimitive)?.doubleOrNull
-            val longitude = (obj["longitude"] as? JsonPrimitive)?.doubleOrNull
-            if (latitude != null && longitude != null) Coordinate(latitude, longitude) else null
-        }
+        val stations =
+            stopPlaces.mapNotNull { element ->
+                val obj = element as? JsonObject ?: return@mapNotNull null
+                val latitude = (obj["latitude"] as? JsonPrimitive)?.doubleOrNull
+                val longitude = (obj["longitude"] as? JsonPrimitive)?.doubleOrNull
+                if (latitude != null && longitude != null) Coordinate(latitude, longitude) else null
+            }
+        println("Indexed ${stations.size} stations.")
+        return stations
     }
 
     private companion object {

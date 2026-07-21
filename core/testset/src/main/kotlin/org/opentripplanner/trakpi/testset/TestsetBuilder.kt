@@ -13,11 +13,23 @@ class TestsetBuilder<T>(
     private val store: TestsetStore,
 ) {
     fun prepare(api: String, version: String): Testset {
+        println("Loading requests from the source…")
+        val raw = source.load()
+        println("Loaded ${raw.size} request(s); applying transforms…")
         val prepared =
-            source.load().map { request ->
+            raw.mapIndexed { index, request ->
                 val working = codec.deserialize(request)
-                transforms.fold(working) { current, transform -> transform.apply(current) }
+                val transformed = transforms.fold(working) { current, transform -> transform.apply(current) }
+                val done = index + 1
+                if (done % PROGRESS_INTERVAL == 0 || done == raw.size) println("  transformed $done/${raw.size}")
+                transformed
             }
+        println("Storing testset $api/$version (${prepared.size} request(s))…")
         return Testset(api, version, prepared.map(codec::serialize)).also(store::store)
+    }
+
+    private companion object {
+        /** Emit a progress line every this many requests. */
+        const val PROGRESS_INTERVAL = 100
     }
 }

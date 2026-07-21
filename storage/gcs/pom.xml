@@ -45,6 +45,11 @@
             <version>${trakpi.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.opentripplanner.trakpi</groupId>
+            <artifactId>testset</artifactId>
+            <version>${trakpi.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
         </dependency>

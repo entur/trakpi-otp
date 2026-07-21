@@ -38,6 +38,37 @@ reference/otp/trakpi --help
 
 `--help` works on any subcommand too, e.g. `reference/otp/trakpi test --help`.
 
+## Configuration
+
+All wiring is driven by environment variables, read in `Main.kt`. None are required for a local
+`test` run against a file-based results directory; the rest opt into BigQuery/GCS.
+
+| Variable | Controls | Default |
+| --- | --- | --- |
+| `TRAKPI_RESULTS_DIR` | Directory for local JSON result files, used when KPIs are not streamed to BigQuery. | `results` |
+| `TRAKPI_BQ_PROJECT` | GCP project to stream KPI results into BigQuery. Unset → results are written as local files instead. | _(unset)_ |
+| `TRAKPI_BQ_DATASET` | BigQuery dataset for KPI results. | `kpi_tracking` |
+| `TRAKPI_BQ_TABLE` | BigQuery table for KPI results. | `kpi_metrics_v1` |
+| `TRAKPI_GCS_BUCKET` | GCS bucket. When set: each result's raw request/response is archived there (and read back for `--reference-version` comparisons), **and** prepared testsets are stored there. | _(unset)_ |
+| `TRAKPI_TESTSET_DIR` | Local directory for prepared testsets, used when `TRAKPI_GCS_BUCKET` is unset. | `testsets` |
+| `TRAKPI_REQUESTS_ENV` | Entur environment whose prod request log seeds `testset prepare`: `prd` or `tst`. Unset → `testset prepare` has no source. | _(unset)_ |
+| `TRAKPI_REQUESTS_SAMPLE_SIZE` | How many requests `testset prepare` samples. | `1000` |
+
+BigQuery and GCS authenticate with Application Default Credentials, which can be set up with
+`gcloud auth application-default login`.
+
+## Preparing a testset
+
+`trakpi testset prepare --version <label>` builds the versioned request set that `trakpi test
+--testset-version <label>` later exercises.
+
+```bash
+export TRAKPI_REQUESTS_ENV=prd
+export TRAKPI_GCS_BUCKET=ent-trakpiotp-tst-trakpi-archive
+reference/otp/trakpi testset prepare --version 2026-07-21
+reference/otp/trakpi testset list
+```
+
 ## Run from source
 To run without repackaging (the library still needs to be installed first):
 
