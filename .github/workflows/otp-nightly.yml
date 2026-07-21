@@ -19,7 +19,7 @@ jobs:
       TRAKPI_BQ_DATASET: kpi_tracking
       TRAKPI_BQ_TABLE: kpi_metrics_v1
       TRAKPI_GCS_BUCKET: ent-trakpiotp-tst-trakpi-archive
-      TRAKPI_TESTSET_VERSION: 2026-06-24
+      TRAKPI_TESTSET_VERSION: 2026-07-21
       # TEMPORARILY HARDCODED: Baseline build to compare against. The run representing it is resolved from stored results.
       # Empty = no comparison. Bump this when a new build should become the baseline.
       TRAKPI_REFERENCE_VERSION: 2.10.0-entur-133
@@ -77,4 +77,4 @@ jobs:
         run: mvn -B -f reference/otp/pom.xml package
 
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
-        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "$TRAKPI_REFERENCE_VERSION" --config reference/otp/trakpi.properties
+        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "$TRAKPI_REFERENCE_VERSION"

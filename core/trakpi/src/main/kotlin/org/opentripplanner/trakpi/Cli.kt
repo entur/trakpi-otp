@@ -13,8 +13,9 @@ import java.nio.file.Path
 import java.time.Instant
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.Orchestrator
-import org.opentripplanner.trakpi.tester.RequestFileLoader
+import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
+import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.testset.RequestCodec
 import org.opentripplanner.trakpi.testset.TestsetBuilder
 import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
@@ -40,6 +41,7 @@ class TesterConfig<R : TravelPlannerRequest>(
     val resultsWriter: ResultsWriter,
     val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
     val resultsReader: ResultsReader? = null,
+    val requestFileLoader: RequestFileLoader? = null,
 )
 
 /**
@@ -128,12 +130,7 @@ internal class Test<R : TravelPlannerRequest>(
     // TODO: --version is not yet used by the engine; it will select the prepared planner build.
     override fun run() {
         val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
-        val config =
-            try {
-                TrakpiConfigLoader.load(configFile = configFile, overrides = overrides)
-            } catch (e: IllegalArgumentException) {
-                throw UsageError(e.message ?: "Invalid configuration")
-            }
+        val requestFileLoader = tester.requestFileLoader ?: DirectoryRequestFileLoader(loadConfig().requestsDir)
         Tester(
                 run =
                     RunMetadata.create(
@@ -143,7 +140,7 @@ internal class Test<R : TravelPlannerRequest>(
                         referenceVersion = referenceVersion,
                         testsetVersion = testsetVersion,
                     ),
-                requestFileLoader = RequestFileLoader(config.requestsDir),
+                requestFileLoader = requestFileLoader,
                 requestLoader = tester.requestLoader,
                 travelPlanner = tester.travelPlanner,
                 kpiCalculators = tester.kpiCalculators,
@@ -154,6 +151,13 @@ internal class Test<R : TravelPlannerRequest>(
             )
             .run()
     }
+
+    private fun loadConfig() =
+        try {
+            TrakpiConfigLoader.load(configFile = configFile, overrides = overrides)
+        } catch (e: IllegalArgumentException) {
+            throw UsageError(e.message ?: "Invalid configuration")
+        }
 }
 
 internal class Testset : CliktCommand(name = "testset") {

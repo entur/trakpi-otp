@@ -19,10 +19,12 @@ import org.opentripplanner.trakpi.storage.bigquery.BigQueryTestsetSource
 import org.opentripplanner.trakpi.storage.bigquery.RequestEnvironment
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileTestsetStore
+import org.opentripplanner.trakpi.storage.gcs.GcsRequestFileLoader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsReader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
 import org.opentripplanner.trakpi.storage.gcs.GcsTestsetStore
 import org.opentripplanner.trakpi.tester.FanOutResultsWriter
+import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.testset.TestsetSource
@@ -56,6 +58,7 @@ fun main(args: Array<String>) {
                 resultsWriter = resultsWriter(),
                 comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
                 resultsReader = resultsReader(),
+                requestFileLoader = requestFileLoader(),
             ),
         testset =
             TestsetConfig(
@@ -81,6 +84,15 @@ private fun testsetSource(): TestsetSource? {
         environment = RequestEnvironment.valueOf(environment.uppercase()),
         sampleSize = System.getenv("TRAKPI_REQUESTS_SAMPLE_SIZE")?.toInt() ?: 1000,
     )
+}
+
+/**
+ * Where `test` reads its request files from: the testset in GCS when TRAKPI_GCS_BUCKET is set,
+ * otherwise null so the CLI falls back to local filesystem.
+ */
+private fun requestFileLoader(): RequestFileLoader? {
+    val bucket = System.getenv("TRAKPI_GCS_BUCKET") ?: return null
+    return GcsRequestFileLoader.create(bucket, api = "transmodel")
 }
 
 /** Where prepared testsets are stored: a GCS bucket when TRAKPI_GCS_BUCKET is set, otherwise local files. */

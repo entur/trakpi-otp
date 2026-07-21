@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.tester
 
 import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.KPICalculator
+import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
@@ -29,7 +30,7 @@ class Tester<R : TravelPlannerRequest>(
     private val referenceVersion: String? = null,
 ) {
     fun run() {
-        val files = requestFileLoader.loadAll()
+        val files = requestFileLoader.loadAll(run.testsetVersion)
         val reference: Map<String, TravelPlannerResponse> =
             if (referenceVersion != null && resultsReader != null)
                 resultsReader.referenceResponses(referenceVersion, run.testsetVersion)
