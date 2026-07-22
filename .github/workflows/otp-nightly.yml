@@ -20,9 +20,6 @@ jobs:
       TRAKPI_BQ_TABLE: kpi_metrics_v1
       TRAKPI_GCS_BUCKET: ent-trakpiotp-tst-trakpi-archive
       TRAKPI_TESTSET_VERSION: 2026-07-21
-      # TEMPORARILY HARDCODED: Baseline build to compare against. The run representing it is resolved from stored results.
-      # Empty = no comparison. Bump this when a new build should become the baseline.
-      TRAKPI_REFERENCE_VERSION: 2.10.0-entur-133
       # OTP dev endpoint. Used to resolve the deployed version under test.
       OTP_ENDPOINT: https://api.dev.entur.io/journey-planner/v3/graphql
       OTP_CLIENT_NAME: entur-trakpi-dev
@@ -76,5 +73,15 @@ jobs:
       - name: Build the OTP reference
         run: mvn -B -f reference/otp/pom.xml package
 
+      # Roll the reference forward: compare against the previous run for this testset. The most recent
+      # build version recorded in BigQuery. Empty on the first run for a testset (no comparison KPI's then).
+      - name: Resolve reference version (the previous run for this testset)
+        id: ref
+        run: |
+          raw=$(bq query --project_id="${TRAKPI_BQ_PROJECT}" --quiet --use_legacy_sql=false --format=csv --max_rows=1 "SELECT version FROM \`${TRAKPI_BQ_PROJECT}.${TRAKPI_BQ_DATASET}.${TRAKPI_BQ_TABLE}\` WHERE testset_version = '${TRAKPI_TESTSET_VERSION}' ORDER BY run_ts DESC LIMIT 1")
+          version=$(printf '%s\n' "$raw" | grep -vE '^(version|[[:space:]]*)$' | tail -n 1 || true)
+          echo "Reference version: ${version:-<none>}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
-        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "$TRAKPI_REFERENCE_VERSION"
+        run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "${{ steps.ref.outputs.version }}"
