@@ -69,6 +69,12 @@ reference/otp/trakpi testset prepare --version 2026-07-21
 reference/otp/trakpi testset list
 ```
 
+## Request sources
+The OTP reference supplies test requests through two `spi.RequestFileLoader` implementations. A
+local `test` run reads them from a directory, where each file holds one request and its filename
+(without extension) is the request id. When a GCS bucket is configured, requests are read from the
+prepared testset stored there instead.
+
 ## Run from source
 To run without repackaging (the library still needs to be installed first):
 

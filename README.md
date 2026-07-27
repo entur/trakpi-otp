@@ -138,10 +138,11 @@ jq -s '[.[].kpis.routingTimeMs | numbers] | add / length' results/<runId>/*.json
 ```
 
 ## Inputs - requests
-Each test run executes a set or requests. These are loaded from a folder of text files as configured in the config file.
-Each text file contains one planner request, and the filename (without extension) is treated as extension.
-Trakpi handles loading the request files without considering how the request is formatted in the file, then hands the
-raw request file contents to an `spi.RequestLoader` to parse the request in a format supported by the `spi.TravelPlanner`.
+Each test run executes a set of requests. Where those requests come from is up to the integration: a
+`spi.RequestFileLoader` supplies them, and an implementation may read them from a local folder, a
+cloud bucket, a database table, or anywhere else. Each is loaded as raw text — an id and a body —
+without regard for how the request is formatted. The body is then handed to an `spi.RequestLoader`,
+which parses it into a request in a format the `spi.TravelPlanner` supports.
 
 ## Outputs
 Each test run stores the following outputs for each test case
