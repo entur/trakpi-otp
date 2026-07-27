@@ -120,7 +120,7 @@ internal class Test<R : TravelPlannerRequest>(
 
     private val configFile: Path? by
         option("--config", help = "Path to a trakpi config file (.properties)").path(mustExist = true, canBeDir = false)
-    private val overrides: Map<String, String> by
+    private val commandLineOverrides: Map<String, String> by
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
     private val referenceVersion: String? by
         option("--reference-version", help = "Baseline version to compare against")
@@ -154,7 +154,7 @@ internal class Test<R : TravelPlannerRequest>(
 
     private fun loadConfig() =
         try {
-            TrakpiConfigLoader.load(configFile = configFile, overrides = overrides)
+            TrakpiConfigLoader.load(configFile = configFile, commandLineOverrides = commandLineOverrides)
         } catch (e: IllegalArgumentException) {
             throw UsageError(e.message ?: "Invalid configuration")
         }

@@ -13,7 +13,7 @@ class TrakpiConfigLoaderTest {
         val file = Files.createTempFile("trakpi", ".properties")
         file.writeText("requests.dir=$requests")
 
-        val config = TrakpiConfigLoader.load(configFile = file, overrides = emptyMap())
+        val config = TrakpiConfigLoader.load(configFile = file, commandLineOverrides = emptyMap())
 
         assertEquals(requests, config.requestsDir)
     }
@@ -22,7 +22,7 @@ class TrakpiConfigLoaderTest {
     fun `reads requests dir from overrides without a config file`() {
         val requests = Files.createTempDirectory("requests")
 
-        val config = TrakpiConfigLoader.load(configFile = null, overrides = mapOf("requests.dir" to "$requests"))
+        val config = TrakpiConfigLoader.load(configFile = null, commandLineOverrides = mapOf("requests.dir" to "$requests"))
 
         assertEquals(requests, config.requestsDir)
     }
@@ -34,7 +34,7 @@ class TrakpiConfigLoaderTest {
         val file = Files.createTempFile("trakpi", ".properties")
         file.writeText("requests.dir=$fromFile")
 
-        val config = TrakpiConfigLoader.load(configFile = file, overrides = mapOf("requests.dir" to "$fromOverride"))
+        val config = TrakpiConfigLoader.load(configFile = file, commandLineOverrides = mapOf("requests.dir" to "$fromOverride"))
 
         assertEquals(fromOverride, config.requestsDir)
     }
@@ -43,7 +43,7 @@ class TrakpiConfigLoaderTest {
     fun `trims override values`() {
         val requests = Files.createTempDirectory("requests")
 
-        val config = TrakpiConfigLoader.load(configFile = null, overrides = mapOf("requests.dir" to "  $requests  "))
+        val config = TrakpiConfigLoader.load(configFile = null, commandLineOverrides = mapOf("requests.dir" to "  $requests  "))
 
         assertEquals(requests, config.requestsDir)
     }
@@ -54,7 +54,7 @@ class TrakpiConfigLoaderTest {
         val file = Files.createTempFile("trakpi", ".properties")
         file.writeText("requests.dir=$requests")
 
-        val config = TrakpiConfigLoader.load(configFile = file, overrides = mapOf("requests.dir" to "  "))
+        val config = TrakpiConfigLoader.load(configFile = file, commandLineOverrides = mapOf("requests.dir" to "  "))
 
         assertEquals(requests, config.requestsDir)
     }
@@ -62,7 +62,7 @@ class TrakpiConfigLoaderTest {
     @Test
     fun `fails when requests dir is set neither in overrides nor in a file`() {
         assertFailsWith<IllegalArgumentException> {
-            TrakpiConfigLoader.load(configFile = null, overrides = emptyMap())
+            TrakpiConfigLoader.load(configFile = null, commandLineOverrides = emptyMap())
         }
     }
 
@@ -72,7 +72,7 @@ class TrakpiConfigLoaderTest {
         file.writeText("other.key=value")
 
         assertFailsWith<IllegalArgumentException> {
-            TrakpiConfigLoader.load(configFile = file, overrides = emptyMap())
+            TrakpiConfigLoader.load(configFile = file, commandLineOverrides = emptyMap())
         }
     }
 
@@ -81,7 +81,7 @@ class TrakpiConfigLoaderTest {
         val missing = Files.createTempDirectory("x").resolve("missing")
 
         assertFailsWith<IllegalArgumentException> {
-            TrakpiConfigLoader.load(configFile = null, overrides = mapOf("requests.dir" to "$missing"))
+            TrakpiConfigLoader.load(configFile = null, commandLineOverrides = mapOf("requests.dir" to "$missing"))
         }
     }
 
@@ -92,7 +92,7 @@ class TrakpiConfigLoaderTest {
         file.writeText("requests.dir=$missing")
 
         assertFailsWith<IllegalArgumentException> {
-            TrakpiConfigLoader.load(configFile = file, overrides = emptyMap())
+            TrakpiConfigLoader.load(configFile = file, commandLineOverrides = emptyMap())
         }
     }
 }
