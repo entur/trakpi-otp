@@ -31,12 +31,12 @@ class Tester<R : TravelPlannerRequest>(
 ) {
     fun run() {
         val files = requestFileLoader.loadAll(run.testsetVersion)
+        val progress = ProgressTracker(files.size)
         val reference: Map<String, TravelPlannerResponse> =
             if (referenceVersion != null && resultsReader != null)
                 resultsReader.referenceResponses(referenceVersion, run.testsetVersion)
             else emptyMap()
         files.forEachIndexed { index, file ->
-            print("[${index + 1}/${files.size}] ${file.id} ... ")
             val request = requestLoader.load(file)
             val response = travelPlanner.execute(request)
             val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
@@ -57,8 +57,7 @@ class Tester<R : TravelPlannerRequest>(
                     kpis = allKpis,
                 ),
             )
-            println("${allKpis.size} KPI(s)")
+            progress.tryReportProgress(itemsProcessed = index + 1)
         }
-        println("Done: ${files.size} request(s).")
     }
 }
