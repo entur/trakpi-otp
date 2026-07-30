@@ -1,4 +1,4 @@
-package org.opentripplanner.trakpi.tester.spi
+package org.opentripplanner.trakpi.tester.spi.kpi
 
 /** A key performance indicator */
 data class Kpi(val name: String, val value: Double)

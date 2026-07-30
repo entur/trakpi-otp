@@ -1,7 +1,7 @@
 package org.opentripplanner.trakpi.tester
 
-import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
-import org.opentripplanner.trakpi.tester.spi.KPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsReader

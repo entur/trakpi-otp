@@ -14,7 +14,7 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 

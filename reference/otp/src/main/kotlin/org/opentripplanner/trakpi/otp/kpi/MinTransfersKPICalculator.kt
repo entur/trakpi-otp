@@ -4,7 +4,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.otp.tripPatterns
-import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /** Fewest transfers across the returned itineraries (transit legs minus one); null when the response has no itineraries. */

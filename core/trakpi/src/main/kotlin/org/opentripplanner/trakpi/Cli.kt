@@ -18,8 +18,8 @@ import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.testset.RequestCodec
 import org.opentripplanner.trakpi.testset.TestsetBuilder
-import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
-import org.opentripplanner.trakpi.tester.spi.KPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.testset.RequestTransform
 import org.opentripplanner.trakpi.tester.spi.ResultsReader

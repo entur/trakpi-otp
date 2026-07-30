@@ -2,8 +2,8 @@ package org.opentripplanner.trakpi.otp.kpi
 
 import org.opentripplanner.trakpi.otp.tripObject
 import org.opentripplanner.trakpi.otp.tripPatterns
-import org.opentripplanner.trakpi.tester.spi.ComparativeKPICalculator
-import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**

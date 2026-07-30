@@ -1,4 +1,6 @@
-package org.opentripplanner.trakpi.tester.spi
+package org.opentripplanner.trakpi.tester.spi.kpi
+
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 interface ComparativeKPICalculator {
     /**

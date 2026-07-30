@@ -4,7 +4,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 

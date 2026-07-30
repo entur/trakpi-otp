@@ -4,7 +4,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import org.opentripplanner.trakpi.otp.tripObject
-import org.opentripplanner.trakpi.tester.spi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /** OTP's server-side routing time from `debugOutput.totalTime` (nanoseconds), in milliseconds; null when absent. */

@@ -2,7 +2,7 @@ package org.opentripplanner.trakpi.otp.kpi
 
 import org.opentripplanner.trakpi.otp.graphql.GraphQlUtil
 import org.opentripplanner.trakpi.otp.testset.OtpRequest
-import org.opentripplanner.trakpi.tester.spi.KPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
 
 /**
  * A [KPICalculator] for OTP requests. It calculates a KPI based on an [OtpRequest] and defines what fields are

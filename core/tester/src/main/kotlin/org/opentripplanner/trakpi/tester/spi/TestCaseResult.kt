@@ -1,5 +1,7 @@
 package org.opentripplanner.trakpi.tester.spi
 
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
+
 /**
  * The outcome of running one request: the raw [request] body and the [method] it targeted, whether
  * it was a [success], the opaque [rawResponse], any implementation-specific [attributes], and the
