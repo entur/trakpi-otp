@@ -34,7 +34,7 @@ class Tester<R : TravelPlannerRequest>(
         val progress = ProgressTracker(files.size)
         val reference: Map<String, TravelPlannerResponse> =
             if (referenceVersion != null && resultsReader != null)
-                resultsReader.referenceResponses(referenceVersion, run.testsetVersion)
+                resultsReader.responses(referenceVersion, run.testsetVersion)
             else emptyMap()
         files.forEachIndexed { index, file ->
             val request = requestLoader.load(file)

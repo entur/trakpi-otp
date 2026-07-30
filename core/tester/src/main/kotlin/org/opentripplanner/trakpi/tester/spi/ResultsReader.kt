@@ -1,13 +1,12 @@
 package org.opentripplanner.trakpi.tester.spi
 
 /**
- * Reads stored results for comparison. The read counterpart to [ResultsWriter].
+ * Reads stored results for comparison.
  */
 interface ResultsReader {
     /**
-     * The archived responses of the reference build [version] for [testsetVersion], keyed by requestId;
-     * empty when that build has none stored. When a build has been exercised more than once, the latest
-     * run's responses are what's stored.
+     * The archived responses of the planner [version] for [testsetVersion], keyed by requestId.
+     * Returns an empty map when none are stored for the [version]/[testsetVersion] pair.
      */
-    fun referenceResponses(version: String, testsetVersion: String): Map<String, TravelPlannerResponse>
+    fun responses(version: String, testsetVersion: String): Map<String, TravelPlannerResponse>
 }
