@@ -4,6 +4,7 @@ import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.testset.Request
 import org.opentripplanner.trakpi.testset.Testset
 import org.opentripplanner.trakpi.testset.TestsetStore
@@ -16,21 +17,21 @@ import org.opentripplanner.trakpi.testset.TestsetStore
 class GcsTestsetStore(private val storage: Storage, private val bucket: String) : TestsetStore {
     override fun store(testset: Testset) {
         testset.requests.forEachIndexed { index, request ->
-            write(objectName(testset.api, testset.version, request), request.body)
+            write(objectName(testset.api, testset.version.value, request), request.body)
             val done = index + 1
             if (done % PROGRESS_INTERVAL == 0 || done == testset.requests.size) println("  uploaded $done/${testset.requests.size}")
         }
     }
 
-    override fun versions(api: String): List<String> {
+    override fun versions(api: String): List<TestsetVersion> {
         val prefix = versionsPrefix(api)
         return storage
             .list(bucket, Storage.BlobListOption.prefix(prefix), Storage.BlobListOption.currentDirectory())
             .iterateAll()
             .map { it.name }
             .filter { it.endsWith("/") && it != prefix }
-            .map { it.removePrefix(prefix).removeSuffix("/") }
-            .sortedDescending()
+            .map { TestsetVersion(it.removePrefix(prefix).removeSuffix("/")) }
+            .sortedByDescending { it.value }
     }
 
     private fun write(objectName: String, body: String) {

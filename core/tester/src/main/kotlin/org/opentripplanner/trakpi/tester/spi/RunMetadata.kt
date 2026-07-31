@@ -1,6 +1,8 @@
 package org.opentripplanner.trakpi.tester.spi
 
 import java.time.Instant
+import org.opentripplanner.trakpi.common.PlannerVersion
+import org.opentripplanner.trakpi.common.TestsetVersion
 
 /**
  * Identifies a single test run. [runId] groups every result of the run together, independently of
@@ -14,24 +16,24 @@ import java.time.Instant
  */
 data class RunMetadata(
     val runId: String,
-    val version: String,
+    val version: PlannerVersion,
     val application: String,
-    val referenceVersion: String?,
+    val referenceVersion: PlannerVersion?,
     val isReferenceVersion: Boolean,
-    val testsetVersion: String,
+    val testsetVersion: TestsetVersion,
     val startedAt: Instant,
 ) {
     companion object {
         /** Builds run metadata for [version] started at [startedAt], with a filesystem-safe [runId]. */
         fun create(
-            version: String,
+            version: PlannerVersion,
             application: String,
             startedAt: Instant,
-            testsetVersion: String,
-            referenceVersion: String? = null,
+            testsetVersion: TestsetVersion,
+            referenceVersion: PlannerVersion? = null,
         ): RunMetadata =
             RunMetadata(
-                runId = "${version}_${startedAt.toString().replace(":", "")}",
+                runId = "${version.value}_${startedAt.toString().replace(":", "")}",
                 version = version,
                 application = application,
                 referenceVersion = referenceVersion,

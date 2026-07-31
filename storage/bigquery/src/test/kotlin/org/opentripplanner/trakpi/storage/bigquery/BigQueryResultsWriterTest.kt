@@ -4,6 +4,8 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.opentripplanner.trakpi.common.PlannerVersion
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
@@ -11,11 +13,11 @@ import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 class BigQueryResultsWriterTest {
     private val run =
         RunMetadata.create(
-            version = "dev",
+            version = PlannerVersion("dev"),
             application = "otp",
             startedAt = Instant.parse("2026-07-08T04:00:00Z"),
-            referenceVersion = "baseline",
-            testsetVersion = "testset-1",
+            referenceVersion = PlannerVersion("baseline"),
+            testsetVersion = TestsetVersion("testset-1"),
         )
 
     private fun result(kpis: List<Kpi>) =

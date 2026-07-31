@@ -1,5 +1,7 @@
 package org.opentripplanner.trakpi.testset
 
+import org.opentripplanner.trakpi.common.TestsetVersion
+
 /**
  * Prepares a new testset for [api]/[version]: loads raw requests from [source], deserializes each into the
  * planner's working form via [codec], applies the [transforms] in order (a transform that does not
@@ -12,7 +14,7 @@ class TestsetBuilder<T>(
     private val transforms: List<RequestTransform<T>>,
     private val store: TestsetStore,
 ) {
-    fun prepare(api: String, version: String): Testset {
+    fun prepare(api: String, version: TestsetVersion): Testset {
         println("Loading requests from the source…")
         val raw = source.load()
         println("Loaded ${raw.size} request(s); applying transforms…")

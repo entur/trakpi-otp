@@ -14,6 +14,8 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.opentripplanner.trakpi.common.PlannerVersion
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
@@ -26,11 +28,11 @@ class FileResultsWriterTest {
         val storage = FileResultsWriter(dir, clock)
         val run =
             RunMetadata.create(
-                version = "dev",
+                version = PlannerVersion("dev"),
                 application = "otp",
                 startedAt = Instant.parse("2026-06-23T04:00:00Z"),
-                referenceVersion = "dev",
-                testsetVersion = "testset-1",
+                referenceVersion = PlannerVersion("dev"),
+                testsetVersion = TestsetVersion("testset-1"),
             )
 
         storage.store(

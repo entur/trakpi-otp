@@ -4,6 +4,7 @@ import java.nio.file.Files
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.opentripplanner.trakpi.common.TestsetVersion
 
 class DirectoryRequestFileLoaderTest {
     @Test
@@ -12,7 +13,7 @@ class DirectoryRequestFileLoaderTest {
         dir.resolve("request-2.graphql").writeText("second")
         dir.resolve("request-1.graphql").writeText("first")
 
-        val files = DirectoryRequestFileLoader(dir).loadAll("ignored-version")
+        val files = DirectoryRequestFileLoader(dir).loadAll(TestsetVersion("ignored-version"))
 
         assertEquals(listOf("request-1", "request-2"), files.map { it.id })
         assertEquals(listOf("first", "second"), files.map { it.body })

@@ -2,6 +2,8 @@ package org.opentripplanner.trakpi.storage.gcs
 
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import org.opentripplanner.trakpi.common.PlannerVersion
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
@@ -12,8 +14,8 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
  */
 class GcsResultsReader(private val storage: Storage, private val bucket: String) : ResultsReader {
 
-    override fun responses(version: String, testsetVersion: String): Map<String, TravelPlannerResponse> {
-        val prefix = GcsResultsWriter.resultsPrefix(testsetVersion, version)
+    override fun responses(version: PlannerVersion, testsetVersion: TestsetVersion): Map<String, TravelPlannerResponse> {
+        val prefix = GcsResultsWriter.resultsPrefix(testsetVersion.value, version.value)
         val byRequest = HashMap<String, TravelPlannerResponse>()
         for (blob in storage.list(bucket, Storage.BlobListOption.prefix(prefix)).iterateAll()) {
             val requestId = blob.name.removePrefix(prefix)

@@ -1,5 +1,6 @@
 package org.opentripplanner.trakpi.tester
 
+import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
@@ -27,7 +28,7 @@ class Tester<R : TravelPlannerRequest>(
     private val resultsWriter: ResultsWriter,
     private val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
     private val resultsReader: ResultsReader? = null,
-    private val referenceVersion: String? = null,
+    private val referenceVersion: PlannerVersion? = null,
 ) {
     fun run() {
         val files = requestFileLoader.loadAll(run.testsetVersion)

@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.storage.gcs
 
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.RequestFile
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 
@@ -11,8 +12,8 @@ import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
  * Authenticates with Application Default Credentials.
  */
 class GcsRequestFileLoader(private val storage: Storage, private val bucket: String, private val api: String) : RequestFileLoader {
-    override fun loadAll(testsetVersion: String): List<RequestFile> {
-        val prefix = "testsets/$api/$testsetVersion/"
+    override fun loadAll(testsetVersion: TestsetVersion): List<RequestFile> {
+        val prefix = "testsets/$api/${testsetVersion.value}/"
         return storage
             .list(bucket, Storage.BlobListOption.prefix(prefix))
             .iterateAll()

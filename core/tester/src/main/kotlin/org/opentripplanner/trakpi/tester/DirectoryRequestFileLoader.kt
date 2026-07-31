@@ -5,6 +5,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.readText
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.RequestFile
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 
@@ -13,7 +14,7 @@ import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
  * is its filename without extension. The directory holds one fixed set, so the testset version is ignored.
  */
 class DirectoryRequestFileLoader(private val dir: Path) : RequestFileLoader {
-    override fun loadAll(testsetVersion: String): List<RequestFile> =
+    override fun loadAll(testsetVersion: TestsetVersion): List<RequestFile> =
         dir.listDirectoryEntries()
             .filter { it.isRegularFile() }
             .sorted()

@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.testset
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.opentripplanner.trakpi.common.TestsetVersion
 
 class TestsetBuilderTest {
     /** A trivial working request whose in-memory form is just its text. */
@@ -25,10 +26,10 @@ class TestsetBuilderTest {
         val store =
             object : TestsetStore {
                 override fun store(testset: Testset) { stored += testset }
-                override fun versions(api: String) = emptyList<String>()
+                override fun versions(api: String) = emptyList<TestsetVersion>()
             }
 
-        val result = TestsetBuilder(source, codec, transforms, store).prepare("transmodel", "2026-07-16")
+        val result = TestsetBuilder(source, codec, transforms, store).prepare("transmodel", TestsetVersion("2026-07-16"))
 
         // both transforms run on both requests, in order; the first self-targets "trip" only
         assertEquals(listOf("trip-A-Z", "nearest-Z"), result.requests.map { it.body })

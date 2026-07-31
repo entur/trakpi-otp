@@ -25,11 +25,11 @@ class FileResultsWriter(private val outputDir: Path, private val clock: Clock = 
         runDir.createDirectories()
         val payload = buildJsonObject {
             put("runId", run.runId)
-            put("version", run.version)
+            put("version", run.version.value)
             put("application", run.application)
             put("isReferenceVersion", run.isReferenceVersion)
-            run.referenceVersion?.let { put("referenceVersion", it) }
-            put("testsetVersion", run.testsetVersion)
+            run.referenceVersion?.let { put("referenceVersion", it.value) }
+            put("testsetVersion", run.testsetVersion.value)
             put("requestId", result.requestId)
             put("request", result.request)
             put("method", result.method)

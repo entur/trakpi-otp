@@ -11,6 +11,8 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 import java.time.Instant
+import org.opentripplanner.trakpi.common.PlannerVersion
+import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.Orchestrator
 import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
@@ -131,14 +133,24 @@ internal class Test<R : TravelPlannerRequest>(
     override fun run() {
         val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
         val requestFileLoader = tester.requestFileLoader ?: DirectoryRequestFileLoader(loadConfig().requestsDir)
+        val (plannerVersion, referencePlannerVersion, testset) =
+            try {
+                Triple(
+                    PlannerVersion(version),
+                    referenceVersion?.takeIf { it.isNotBlank() }?.let { PlannerVersion(it) },
+                    TestsetVersion(testsetVersion),
+                )
+            } catch (e: IllegalArgumentException) {
+                throw UsageError(e.message ?: "Invalid version")
+            }
         Tester(
                 run =
                     RunMetadata.create(
-                        version = version,
+                        version = plannerVersion,
                         application = application,
                         startedAt = Instant.now(),
-                        referenceVersion = referenceVersion,
-                        testsetVersion = testsetVersion,
+                        referenceVersion = referencePlannerVersion,
+                        testsetVersion = testset,
                     ),
                 requestFileLoader = requestFileLoader,
                 requestLoader = tester.requestLoader,
@@ -147,7 +159,7 @@ internal class Test<R : TravelPlannerRequest>(
                 resultsWriter = tester.resultsWriter,
                 comparativeKpiCalculators = tester.comparativeKpiCalculators,
                 resultsReader = tester.resultsReader,
-                referenceVersion = referenceVersion?.takeIf { it.isNotBlank() },
+                referenceVersion = referencePlannerVersion,
             )
             .run()
     }
@@ -173,7 +185,7 @@ internal class Testset : CliktCommand(name = "testset") {
             val store = config.store ?: throw UsageError("No testset store configured for this planner.")
             val versions = store.versions(config.api)
             if (versions.isEmpty()) echo("No testsets for api '${config.api}'.")
-            else versions.forEach { echo(it) }
+            else versions.forEach { echo(it.value) }
         }
     }
 
@@ -187,7 +199,13 @@ internal class Testset : CliktCommand(name = "testset") {
             val source = config.source ?: throw UsageError("No testset source configured for this planner.")
             val codec = config.codec ?: throw UsageError("No request codec configured for this planner.")
             val store = config.store ?: throw UsageError("No testset store configured for this planner.")
-            val testset = TestsetBuilder(source, codec, config.transforms, store).prepare(config.api, version)
+            val testsetVersion =
+                try {
+                    TestsetVersion(version)
+                } catch (e: IllegalArgumentException) {
+                    throw UsageError(e.message ?: "Invalid version")
+                }
+            val testset = TestsetBuilder(source, codec, config.transforms, store).prepare(config.api, testsetVersion)
             echo("Prepared testset ${testset.api}/${testset.version}: ${testset.requests.size} request(s).")
         }
     }

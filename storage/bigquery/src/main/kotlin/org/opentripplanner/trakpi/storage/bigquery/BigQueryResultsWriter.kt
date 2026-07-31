@@ -46,12 +46,12 @@ class BigQueryResultsWriter(private val bigQuery: BigQuery, private val tableId:
             val dimensions =
                 buildMap<String, Any> {
                     put("run_id", run.runId)
-                    put("version", run.version)
+                    put("version", run.version.value)
                     put("application", run.application)
                     put("run_ts", run.startedAt.toString())
                     put("is_reference_version", run.isReferenceVersion)
-                    run.referenceVersion?.let { put("reference_version", it) }
-                    put("testset_version", run.testsetVersion)
+                    run.referenceVersion?.let { put("reference_version", it.value) }
+                    put("testset_version", run.testsetVersion.value)
                     put("request_id", result.requestId)
                     put("method", result.method)
                     put("success", result.success)

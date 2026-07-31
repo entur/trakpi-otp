@@ -35,13 +35,13 @@ class GcsResultsWriter(private val storage: Storage, private val bucket: String)
 
         /** Key for a request */
         internal fun requestObjectName(run: RunMetadata, requestId: String): String =
-            "requests/${run.testsetVersion}/$requestId"
+            "requests/${run.testsetVersion.value}/$requestId"
 
         /** Object-name prefix holding a build's responses for a testset. */
         internal fun resultsPrefix(testsetVersion: String, version: String): String = "results/$testsetVersion/$version/"
 
         /** Key for a response, addressed by the build [RunMetadata.version] so it's findable by reference version. */
         internal fun responseObjectName(run: RunMetadata, requestId: String): String =
-            resultsPrefix(run.testsetVersion, run.version) + requestId
+            resultsPrefix(run.testsetVersion.value, run.version.value) + requestId
     }
 }
