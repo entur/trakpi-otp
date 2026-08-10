@@ -7,34 +7,40 @@ import com.google.cloud.bigquery.QueryParameterValue
 import org.opentripplanner.trakpi.testset.Request
 import org.opentripplanner.trakpi.testset.TestsetSource
 
-/** The Entur environment we will fetch logged requests from as source for the testset. */
-enum class RequestEnvironment(val project: String) {
-    PRD("ent-deneir-prd"),
-    TST("ent-deneir-tst"),
+/** The Entur environment we fetch logged requests from. [requestLogTable] is the fully qualified BigQuery table holding its raw request log. */
+enum class RequestEnvironment(val requestLogTable: String) {
+    PRD("ent-deneir-prd.journey_planner_v3.journey_planner_v3_raw_requests"),
+    TST("ent-deneir-tst.journey_planner_v3.journey_planner_v3_raw_requests"),
 }
 
 /**
- * Sources testset requests from the Entur prod request log in BigQuery: a random sample of up to
+ * Sources testset requests from an Entur request log in BigQuery: a random sample of up to
  * [sampleSize] requests from the most recent complete hour, each keyed by its external correlation id.
  * The query targets a single hourly partition, so it scans only that hour.
+ *
+ * The google cloud service account running this job requires permissions bigquery.dataViewer on [requestLogTable] and bigquery.jobUser.
+ *
+ * The job runs in and is billed to the caller's default project.
+ *
  * Authenticates with Application Default Credentials.
  */
-class BigQueryTestsetSource(private val bigQuery: BigQuery, private val sampleSize: Int) : TestsetSource {
+class BigQueryTestsetSource(private val bigQuery: BigQuery, private val requestLogTable: String, private val sampleSize: Int) :
+    TestsetSource {
     override fun load(): List<Request> {
         val config =
-            QueryJobConfiguration.newBuilder(QUERY)
+            QueryJobConfiguration.newBuilder(query(requestLogTable))
                 .addNamedParameter("limit", QueryParameterValue.int64(sampleSize.toLong()))
                 .build()
         return bigQuery.query(config).iterateAll().map { row -> Request(id = row.get("id").stringValue, body = row.get("body").stringValue) }
     }
 
     companion object {
-        private val QUERY =
+        private fun query(requestLogTable: String) =
             """
             SELECT
               JSON_VALUE(attributes["X-Big-Daddy-External-Correlation-Id"]) AS id,
               DATA AS body
-            FROM `journey_planner_v3.journey_planner_v3_raw_requests`
+            FROM `$requestLogTable`
             WHERE TIMESTAMP_TRUNC(publish_time, HOUR) = TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR), HOUR)
               AND DATA IS NOT NULL
               AND JSON_VALUE(attributes["X-Big-Daddy-External-Correlation-Id"]) IS NOT NULL
@@ -44,9 +50,7 @@ class BigQueryTestsetSource(private val bigQuery: BigQuery, private val sampleSi
                 .trimIndent()
 
         /** A source over [environment]'s request log using Application Default Credentials. */
-        fun create(environment: RequestEnvironment, sampleSize: Int): BigQueryTestsetSource {
-            val bigQuery = BigQueryOptions.newBuilder().setProjectId(environment.project).build().service
-            return BigQueryTestsetSource(bigQuery, sampleSize)
-        }
+        fun create(environment: RequestEnvironment, sampleSize: Int): BigQueryTestsetSource =
+            BigQueryTestsetSource(BigQueryOptions.getDefaultInstance().service, environment.requestLogTable, sampleSize)
     }
 }
