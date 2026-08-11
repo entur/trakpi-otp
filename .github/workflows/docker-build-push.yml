@@ -1,0 +1,54 @@
+#
+# Shared Workflows - Docker Build and Push
+#
+# Reusable Workflows used:
+# * Docker Lint
+#   * Readme <https://github.com/entur/gha-docker/blob/main/README-lint.md>
+#   * Owner: Team Plattform
+#   * Slack: #Talk-plattform
+# * Docker Build
+#   * Readme <https://github.com/entur/gha-docker/blob/main/README-build.md>
+#   * Owner: Team Plattform
+#   * Slack: #Talk-plattform
+# * Docker Push
+#   * Readme: <https://github.com/entur/gha-docker/blob/main/README-push.md>
+#   * Owner: Team Plattform
+#   * Slack: #Talk-plattform
+# * Docker Scan
+#   * Readme <https://github.com/entur/gha-security/blob/main/README-docker-scan.md>
+#   * Owner: Team Sikkerhet
+#   * Slack: #talk-sikkerhet
+#
+# Prerequisites:
+#    Appfactory Setup
+#
+#
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  docker-lint:
+    name: Docker Lint
+    uses: entur/gha-docker/.github/workflows/lint.yml@v1
+    with:
+      dockerfile: Dockerfile
+  docker-build:
+    name: Build Docker Image
+    needs: docker-lint
+    uses: entur/gha-docker/.github/workflows/build.yml@v1
+    with:
+      dockerfile: Dockerfile
+  docker-scan:
+    name: Scan Docker Image
+    needs: docker-build
+    uses: entur/gha-security/.github/workflows/docker-scan.yml@v2
+    secrets: inherit
+    with:
+      image_artifact: ${{ needs.docker-build.outputs.image_artifact }}
+  docker-push:
+    name: Push Docker Image
+    needs: docker-scan
+    uses: entur/gha-docker/.github/workflows/push.yml@v1
