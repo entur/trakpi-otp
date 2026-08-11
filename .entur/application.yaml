@@ -8,4 +8,4 @@ metadata:
   trigger: 1783512163
 spec:
   environments: [tst]
-  repositories: [trakpi-otp]
+  repositories: [trakpi-otp, trakpi-otp-deployment-config]
