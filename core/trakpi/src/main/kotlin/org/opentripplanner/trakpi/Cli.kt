@@ -11,6 +11,8 @@ import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
@@ -190,9 +192,10 @@ internal class Testset : CliktCommand(name = "testset") {
     }
 
     class Prepare<T>(private val config: TestsetConfig<T>?) : CliktCommand(name = "prepare") {
-        override fun help(context: Context) = "Prepare a new testset: source raw requests, clean them, and store them under --version."
+        override fun help(context: Context) = "Prepare a new testset: source raw requests, clean them, and store them under a version label (today's date by default)."
 
-        private val version: String by option("--version", help = "Version label for the new testset, e.g. the ISO date").required()
+        private val version: String? by
+            option("--version", help = "Version label for the new testset; defaults to today's date (UTC), e.g. 2026-08-11")
 
         override fun run() {
             val config = config ?: throw UsageError("Testsets are not configured for this planner.")
@@ -201,7 +204,7 @@ internal class Testset : CliktCommand(name = "testset") {
             val store = config.store ?: throw UsageError("No testset store configured for this planner.")
             val testsetVersion =
                 try {
-                    TestsetVersion(version)
+                    TestsetVersion(version ?: LocalDate.now(ZoneOffset.UTC).toString())
                 } catch (e: IllegalArgumentException) {
                     throw UsageError(e.message ?: "Invalid version")
                 }
