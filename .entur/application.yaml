@@ -9,4 +9,12 @@ metadata:
 spec:
   environments: [tst]
   repositories: [trakpi-otp, trakpi-otp-deployment-config]
-# temp
+  # Dedicated Workload-Identity-wired identity for the testset prepare CronJob (deployed from the
+  # deployment-config repo).
+  serviceAccounts:
+    - id: prepare
+      kubernetesEnabled: true
+      displayName: TrakPi testset prepare
+      description: Identity for the testset prepare CronJob.
+      roles:
+        - roles/bigquery.jobUser
