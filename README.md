@@ -11,9 +11,9 @@ library in your project, implement the adapters and wire up the CLI. A reference
 TODO
 
 ## Development
-Requires JDK 25+ and Maven. The repository holds three independent builds — `core` (the library),
-`storage`, and `reference/otp`. The downstream builds resolve `core` from your local Maven
-repository, so build `core` first:
+Requires JDK 25+ and Maven. The repository holds several independent builds — `core` (the library),
+the `storage/*` adapters, and `reference/otp`. The downstream builds resolve `core` from your local
+Maven repository, so build `core` first:
 
 ```bash
 mvn -f core/pom.xml install
@@ -28,16 +28,20 @@ mvn -f core/pom.xml -pl tester test
 ```
 
 ### Project layout
-The repository contains three independent Maven builds: `core` is a multi-module reactor; `storage`
-and `reference/otp` are standalone builds that depend on the published `core`.
+The repository contains several independent Maven builds: `core` is a multi-module reactor; each
+`storage/*` adapter and `reference/otp` are standalone builds that depend on the published `core`.
 
 ```
 core/
+  common          shared value types (planner and testset versions)
   tester          runs tests against an already-started planner
+  testset         builds and stores testsets — the versioned request sets a planner is tested against
   orchestrator    prepares, starts and stops the planner
   trakpi          the library: command-line surface and public entry point (runTrakpi)
 storage/
   file            file-based ResultsWriter that writes each result as a JSON file
+  bigquery        streams KPI metrics to BigQuery
+  gcs             archives raw requests/responses and stores testsets in GCS
 reference/
   otp             executable reference implementation for OpenTripPlanner
 ```
