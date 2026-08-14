@@ -1,15 +1,10 @@
 package org.opentripplanner.trakpi.orchestrator
 
 /**
- * Manages the lifecycle of a travel planner under test: preparing data, starting the
- * planner process, and stopping it again.
+ * Manages the lifecycle of a travel planner under test: starting the planner process and stopping
+ * it again.
  */
 class Orchestrator {
-    /** Prepare a planner [version] for testing. */
-    fun prepare(version: String, plannerArgs: String?) {
-        println("TODO: prepare $version ${plannerArgs ?: ""}".trim())
-    }
-
     /**
      * Start the planner process for [version] and return once it is ready to serve.
      *

@@ -36,7 +36,7 @@ core/
   common          shared value types (planner and testset versions)
   tester          runs tests against an already-started planner
   testset         builds and stores testsets — the versioned request sets a planner is tested against
-  orchestrator    prepares, starts and stops the planner
+  orchestrator    starts and stops the planner
   trakpi          the library: command-line surface and public entry point (runTrakpi)
 storage/
   file            file-based ResultsWriter that writes each result as a JSON file
@@ -84,30 +84,28 @@ command-line parameters. Command-line parameters always override what is given i
 3. Planner (given by name)
 4. Planner version (e.g. a specific commit hash)
 5. Persistence configuration (e.g. a file path, db connection string, or cloud storage connection string)
-6. Planner arguments (additional arguments passed through to the planner adapter for planner-specific behavior)
-   - These are opaque arguments consumed by the planner adapter. Trakπ itself doesn't consider these.
 
 ## Usage - Running a test
+Running a test starts the planner, runs the requests against it, and stops it again:
+
 ```bash
-# Prepares a version A for testing
-trakpi prepare --version A --plannerargs "--street-data osm-data --transit-data netex-norway"
-
-# Optional: Multiple prepare commands can be run separately with different plannerargs, to support multi-stage setups.
-trakpi prepare --version A --plannerargs "--build-only"
-trakpi prepare --version A --plannerargs "--build-street-graph-only --street-data osm-data"
-trakpi prepare --version A --plannerargs "--build-transit-data-only --transit-data"
-
-# Start a planner. Planners that start a running process must be started before testing
-trakpi start --version A
-
-# Run a test
 trakpi test --version A
-
-# Stop a running planner process
-trakpi stop --version A
 ```
 
-Running `trakpi test` without first running `trakpi start` triggers a full `start - test - stop` flow for convenience.
+To manage the planner lifecycle yourself, for example to keep it running across several tests, start
+and stop it explicitly around `trakpi test`. When a planner is already running, `trakpi test` uses it
+and leaves it running rather than starting and stopping its own:
+
+```bash
+# Start the planner and leave it running
+trakpi start --version A
+
+# Run one or more tests against the running planner
+trakpi test --version A
+
+# Stop the planner
+trakpi stop --version A
+```
 
 Only a single instance can be started at a time.
 
@@ -171,9 +169,8 @@ An adapter is needed for each planner you wish to test against. By default, Trak
 [OpenTripPlanner](https://github.com/opentripplanner/OpenTripPlanner). 
 
 A planner must implement the following SPI:
-* Prepare: Accepts a list of plannerargs. No output.
-* Start: No output.
-* Stop: No output.
+* Start: Starts a planner and leaves it ready to start testing. No output.
+* Stop: Stops and tears down the planner. No output.
 * Test: Outputs raw outputs from the planner in an opaque text format.
 * Mapping:
   * From and to standardized input (request) format
