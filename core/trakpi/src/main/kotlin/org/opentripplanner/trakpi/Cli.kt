@@ -16,7 +16,7 @@ import java.time.ZoneOffset
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
-import org.opentripplanner.trakpi.orchestrator.Orchestrator
+import org.opentripplanner.trakpi.orchestrator.PlannerOrchestrator
 import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
@@ -70,10 +70,10 @@ class TestsetConfig<T>(
 fun <R : TravelPlannerRequest, T> runTrakpi(
     args: Array<String>,
     application: String,
+    orchestrator: PlannerOrchestrator? = null,
     tester: TesterConfig<R>? = null,
     testset: TestsetConfig<T>? = null,
 ) {
-    val orchestrator = Orchestrator()
     val commands =
         listOf(
             Start(orchestrator),
@@ -93,18 +93,35 @@ internal class Trakpi : CliktCommand(name = "trakpi") {
 /** Base for commands that operate on a single planner version. */
 internal abstract class VersionedCommand(name: String) : CliktCommand(name = name) {
     protected val version: String by option("--version", help = "Planner version label, e.g. a commit hash").required()
+
+    /** Parses [version] into a [PlannerVersion], reporting a usage error when it is malformed. */
+    protected fun plannerVersion(): PlannerVersion =
+        try {
+            PlannerVersion(version)
+        } catch (e: IllegalArgumentException) {
+            throw UsageError(e.message ?: "Invalid version")
+        }
 }
 
-internal class Start(private val orchestrator: Orchestrator) : VersionedCommand("start") {
+internal class Start(private val orchestrator: PlannerOrchestrator?) : VersionedCommand("start") {
     override fun help(context: Context) = "Start a planner process."
 
-    override fun run() = orchestrator.start(version)
+    private val plannerArgs: String? by
+        option("--plannerargs", help = "Opaque arguments passed to the planner adapter")
+
+    override fun run() {
+        val orchestrator = orchestrator ?: throw UsageError("Orchestration is not configured for this planner.")
+        orchestrator.start(plannerVersion(), plannerArgs)
+    }
 }
 
-internal class Stop(private val orchestrator: Orchestrator) : VersionedCommand("stop") {
+internal class Stop(private val orchestrator: PlannerOrchestrator?) : VersionedCommand("stop") {
     override fun help(context: Context) = "Stop a running planner process."
 
-    override fun run() = orchestrator.stop(version)
+    override fun run() {
+        val orchestrator = orchestrator ?: throw UsageError("Orchestration is not configured for this planner.")
+        orchestrator.stop(plannerVersion())
+    }
 }
 
 internal class Test<R : TravelPlannerRequest>(
