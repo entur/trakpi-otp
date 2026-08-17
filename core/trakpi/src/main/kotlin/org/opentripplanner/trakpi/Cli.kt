@@ -139,7 +139,8 @@ internal class Test<R : TravelPlannerRequest>(
     private val testsetVersion: String by
         option("--testset-version", help = "Label of the request set being exercised").required()
 
-    // TODO: --version is not yet used by the engine; it will select the prepared planner build.
+    // --version identifies the run: it labels every result and keys the archived responses a later run
+    // compares against.
     override fun run() {
         val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
         val requestFileLoader = tester.requestFileLoader ?: DirectoryRequestFileLoader(loadConfig().requestsDir)
