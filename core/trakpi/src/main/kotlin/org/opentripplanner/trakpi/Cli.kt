@@ -36,7 +36,7 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
  * The runtime side of a planner integration: what the `test` command needs to run a planner build and
- * score its responses. (The `prepare`/`start`/`stop` lifecycle commands need no configuration.)
+ * score its responses. (The `start`/`stop` lifecycle commands need no configuration.)
  */
 class TesterConfig<R : TravelPlannerRequest>(
     val requestLoader: RequestLoader<R>,
@@ -63,7 +63,7 @@ class TestsetConfig<T>(
 
 /**
  * Runs the trakpi command-line interface. Every command is always present so `trakpi` documents itself:
- * `prepare`/`start`/`stop` need no configuration, while `test` and the `testset` commands explain when
+ * `start`/`stop` need no configuration, while `test` and the `testset` commands explain when
  * their [tester]/[testset] is not configured. A planner integration supplies whichever side(s) it
  * supports — the OTP one supplies both.
  */
@@ -76,7 +76,6 @@ fun <R : TravelPlannerRequest, T> runTrakpi(
     val orchestrator = Orchestrator()
     val commands =
         listOf(
-            Prepare(orchestrator),
             Start(orchestrator),
             Stop(orchestrator),
             Test(application, tester),
@@ -94,14 +93,6 @@ internal class Trakpi : CliktCommand(name = "trakpi") {
 /** Base for commands that operate on a single planner version. */
 internal abstract class VersionedCommand(name: String) : CliktCommand(name = name) {
     protected val version: String by option("--version", help = "Planner version label, e.g. a commit hash").required()
-}
-
-internal class Prepare(private val orchestrator: Orchestrator) : VersionedCommand("prepare") {
-    override fun help(context: Context) = "Prepare a planner version for testing."
-
-    private val plannerArgs: String? by option("--plannerargs", help = "Opaque arguments passed to the planner adapter")
-
-    override fun run() = orchestrator.prepare(version, plannerArgs)
 }
 
 internal class Start(private val orchestrator: Orchestrator) : VersionedCommand("start") {
