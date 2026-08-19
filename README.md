@@ -86,25 +86,26 @@ command-line parameters. Command-line parameters always override what is given i
 5. Persistence configuration (e.g. a file path, db connection string, or cloud storage connection string)
 
 ## Usage - Running a test
-Running a test starts the planner, runs the requests against it, and stops it again:
+`trakpi test` runs the requests against an already-running planner:
 
 ```bash
-trakpi test --version A
+trakpi test --version A --testset-version <label>
 ```
 
-To manage the planner lifecycle yourself, for example to keep it running across several tests, start
-and stop it explicitly around `trakpi test`. When a planner is already running, `trakpi test` uses it
-and leaves it running rather than starting and stopping its own:
+To let the test manage the planner itself — start it first and stop it when done, even if the test fails —
+add `--start` and `--stop-on-completion`:
 
 ```bash
-# Start the planner and leave it running
+trakpi test --version A --testset-version <label> --start --stop-on-completion
+```
+
+Or drive the lifecycle by hand with `start`/`stop`, e.g. to keep the planner up across several tests:
+
+```bash
 trakpi start --version A
-
-# Run one or more tests against the running planner
-trakpi test --version A
-
-# Stop the planner
-trakpi stop --version A
+trakpi test  --version A --testset-version <label>
+trakpi test  --version A --testset-version <label>   # again, against the same running planner
+trakpi stop  --version A
 ```
 
 Only a single instance can be started at a time.
