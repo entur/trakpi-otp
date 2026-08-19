@@ -1,0 +1,98 @@
+name: OTP comparison run
+
+# Nightly (and on-demand) KPI comparison. Resolves the candidate (newest otp2 image) and the reference
+# (the version prod is currently running), plus the latest testset, then creates a k8s Job that runs both
+# scoring passes in-cluster. Self-contained — no cross-repo trigger.
+on:
+  schedule:
+    - cron: "0 5 * * *" # after the testset-prepare job and the nightly OTP build; UTC. Adjust as needed.
+  workflow_dispatch:
+    inputs:
+      prod_version:
+        description: "Override the reference (prod) version; blank = resolve from prod serverInfo"
+        required: false
+      candidate_version:
+        description: "Override the candidate version; blank = newest otp2 tag"
+        required: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC / Workload Identity Federation
+
+env:
+  # Deployment coordinates — set as repository variables so they stay out of the source.
+  OTP_IMAGE_REPO: ${{ vars.TRAKPI_OTP_IMAGE_REPO }}
+  TRAKPI_IMAGE: ${{ vars.TRAKPI_IMAGE }} # the distroless trakpi image
+  PROD_OTP_ENDPOINT: ${{ vars.PROD_OTP_ENDPOINT }} # https://api.entur.io/journey-planner/v3/graphql
+  OTP_CLIENT_NAME: ${{ vars.OTP_CLIENT_NAME }} # ET-Client-Name for the serverInfo probe
+  NAMESPACE: ${{ vars.TRAKPI_NAMESPACE }} # trakpiotp
+  SERVICE_ACCOUNT: ${{ vars.TRAKPI_SERVICE_ACCOUNT }} # the trakpi-test KSA, e.g. application
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-tst
+  GKE_LOCATION: ${{ vars.GKE_LOCATION }}
+  GKE_PROJECT: ${{ vars.GKE_PROJECT }} # the cluster's project, e.g. ent-kub-tst
+  GCP_PROJECT: ${{ vars.GCP_PROJECT }} # the trakpi app project (BQ jobs, GOOGLE_CLOUD_PROJECT), e.g. ent-trakpiotp-tst
+  GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }} # ent-trakpiotp-tst-trakpi-archive
+  BQ_DATASET: kpi_tracking
+  BQ_TABLE: kpi_metrics_v1
+  TESTSET_API: transmodel
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.CI_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve reference (prod) version
+        id: prod
+        run: |
+          version="${{ inputs.prod_version }}"
+          if [ -z "$version" ]; then
+            resp=$(curl -sf -m 30 -X POST "$PROD_OTP_ENDPOINT" -H 'Content-Type: application/json' -H "ET-Client-Name: $OTP_CLIENT_NAME" -d '{"query":"{ serverInfo { version } }"}')
+            version=$(printf '%s' "$resp" | jq -r '.data.serverInfo.version // empty')
+          fi
+          if [ -z "$version" ]; then echo "could not resolve prod version" >&2; exit 1; fi
+          # serverInfo reports e.g. 2.10.0-entur-153; otp2 image tags carry a leading v (v2.10.0-entur-153).
+          case "$version" in v*) ;; *) version="v$version" ;; esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "reference (prod) version: $version"
+
+      - name: Resolve candidate (newest otp2 tag)
+        id: candidate
+        run: |
+          version="${{ inputs.candidate_version }}"
+          if [ -z "$version" ]; then
+            version=$(gcloud container images list-tags "$OTP_IMAGE_REPO" --sort-by=~TIMESTAMP --limit=1 --format='value(tags)' | tr ';,' '\n\n' | grep -E '^v.*-entur-[0-9]+$' | head -1)
+          fi
+          if [ -z "$version" ]; then echo "no candidate otp2 tag found in $OTP_IMAGE_REPO" >&2; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "candidate version: $version"
+
+      - name: Resolve latest testset
+        id: testset
+        run: |
+          version=$(gsutil ls "gs://${GCS_BUCKET}/testsets/${TESTSET_API}/" | sed 's#/$##' | awk -F/ 'NF{print $NF}' | sort | tail -1)
+          if [ -z "$version" ]; then echo "no testset found under gs://${GCS_BUCKET}/testsets/${TESTSET_API}/" >&2; exit 1; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "testset: $version"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GKE_PROJECT }}
+
+      - name: Create the comparison Job
+        env:
+          PROD_VERSION: ${{ steps.prod.outputs.version }}
+          CANDIDATE_VERSION: ${{ steps.candidate.outputs.version }}
+          TESTSET: ${{ steps.testset.outputs.version }}
+        run: |
+          echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET"
+          envsubst < deploy/nightly-job.yaml | kubectl create -f -
