@@ -27,6 +27,10 @@ data class OtpConfig(
     val javaOpts: String? = null,
     val fsGroup: Long? = 1000,
     val imagePullPolicy: String = "IfNotPresent",
+    // Identity of the pod trakpi runs in, set as the OTP pod's ownerReference so Kubernetes garbage-collects
+    // the OTP pod if that pod dies before stop runs. Null (e.g. local runs) → no owner reference.
+    val ownerPodName: String? = null,
+    val ownerPodUid: String? = null,
     val readinessTimeout: Duration = Duration.ofMinutes(40),
     val deletionTimeout: Duration = Duration.ofMinutes(2),
     val pollInterval: Duration = Duration.ofSeconds(10),
@@ -59,6 +63,8 @@ data class OtpConfig(
                 javaOpts = env("TRAKPI_OTP_JAVA_OPTS"),
                 fsGroup = env("TRAKPI_OTP_FS_GROUP")?.toLong() ?: 1000,
                 imagePullPolicy = env("TRAKPI_OTP_IMAGE_PULL_POLICY") ?: "IfNotPresent",
+                ownerPodName = env("POD_NAME"),
+                ownerPodUid = env("POD_UID"),
                 readinessTimeout = env("TRAKPI_OTP_READINESS_TIMEOUT_SECONDS")?.toLong()?.let(Duration::ofSeconds)
                     ?: Duration.ofMinutes(40),
                 deletionTimeout = env("TRAKPI_OTP_DELETION_TIMEOUT_SECONDS")?.toLong()?.let(Duration::ofSeconds)

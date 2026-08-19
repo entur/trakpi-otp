@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.otp
 
 import io.fabric8.kubernetes.api.model.ContainerBuilder
 import io.fabric8.kubernetes.api.model.EnvVar
+import io.fabric8.kubernetes.api.model.OwnerReferenceBuilder
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.api.model.PodBuilder
 import io.fabric8.kubernetes.api.model.PodSecurityContextBuilder
@@ -116,6 +117,7 @@ class Fabric8OtpCluster(
                 .endSpec()
                 .build()
         config.fsGroup?.let { pod.spec.securityContext = PodSecurityContextBuilder().withFsGroup(it).build() }
+        pod.metadata.ownerReferences = ownerReferences()
         return pod
     }
 
@@ -144,6 +146,7 @@ class Fabric8OtpCluster(
             .withNewMetadata()
             .withName(config.serviceName)
             .withNamespace(config.namespace)
+            .withOwnerReferences(ownerReferences())
             .endMetadata()
             .withNewSpec()
             .addToSelector("app", config.serviceName)
@@ -153,6 +156,25 @@ class Fabric8OtpCluster(
             .endPort()
             .endSpec()
             .build()
+
+    /**
+     * Owner reference to the pod trakpi runs in, so Kubernetes garbage-collects the OTP pod and service if
+     * that pod dies (kill/crash/deadline) before stop runs. Empty when its identity is unknown (e.g. local
+     * runs), in which case teardown relies on the finally block and the next launch's cleanup.
+     */
+    private fun ownerReferences() =
+        if (config.ownerPodName != null && config.ownerPodUid != null)
+            listOf(
+                OwnerReferenceBuilder()
+                    .withApiVersion("v1")
+                    .withKind("Pod")
+                    .withName(config.ownerPodName)
+                    .withUid(config.ownerPodUid)
+                    .withController(false)
+                    .withBlockOwnerDeletion(false)
+                    .build()
+            )
+        else emptyList()
 
     companion object {
         private const val BASE_VOLUME = "otp-base"
