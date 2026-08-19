@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.associate
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.path
@@ -16,7 +17,7 @@ import java.time.ZoneOffset
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
-import org.opentripplanner.trakpi.orchestrator.Orchestrator
+import org.opentripplanner.trakpi.orchestrator.PlannerOrchestrator
 import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
@@ -70,15 +71,15 @@ class TestsetConfig<T>(
 fun <R : TravelPlannerRequest, T> runTrakpi(
     args: Array<String>,
     application: String,
+    orchestrator: PlannerOrchestrator? = null,
     tester: TesterConfig<R>? = null,
     testset: TestsetConfig<T>? = null,
 ) {
-    val orchestrator = Orchestrator()
     val commands =
         listOf(
             Start(orchestrator),
             Stop(orchestrator),
-            Test(application, tester),
+            Test(application, tester, orchestrator),
             Testset().subcommands(Testset.List(testset), Testset.Prepare(testset)),
         )
     Trakpi().subcommands(commands).main(args)
@@ -93,25 +94,44 @@ internal class Trakpi : CliktCommand(name = "trakpi") {
 /** Base for commands that operate on a single planner version. */
 internal abstract class VersionedCommand(name: String) : CliktCommand(name = name) {
     protected val version: String by option("--version", help = "Planner version label, e.g. a commit hash").required()
+
+    /** Parses [version] into a [PlannerVersion], reporting a usage error when it is malformed. */
+    protected fun plannerVersion(): PlannerVersion =
+        try {
+            PlannerVersion(version)
+        } catch (e: IllegalArgumentException) {
+            throw UsageError(e.message ?: "Invalid version")
+        }
 }
 
-internal class Start(private val orchestrator: Orchestrator) : VersionedCommand("start") {
+internal class Start(private val orchestrator: PlannerOrchestrator?) : VersionedCommand("start") {
     override fun help(context: Context) = "Start a planner process."
 
-    override fun run() = orchestrator.start(version)
+    private val plannerArgs: String? by
+        option("--plannerargs", help = "Opaque arguments passed to the planner adapter")
+
+    override fun run() {
+        val orchestrator = orchestrator ?: throw UsageError("Orchestration is not configured for this planner.")
+        orchestrator.start(plannerVersion(), plannerArgs)
+    }
 }
 
-internal class Stop(private val orchestrator: Orchestrator) : VersionedCommand("stop") {
+internal class Stop(private val orchestrator: PlannerOrchestrator?) : VersionedCommand("stop") {
     override fun help(context: Context) = "Stop a running planner process."
 
-    override fun run() = orchestrator.stop(version)
+    override fun run() {
+        val orchestrator = orchestrator ?: throw UsageError("Orchestration is not configured for this planner.")
+        orchestrator.stop(plannerVersion())
+    }
 }
 
 internal class Test<R : TravelPlannerRequest>(
     private val application: String,
     private val tester: TesterConfig<R>?,
+    private val orchestrator: PlannerOrchestrator?,
 ) : VersionedCommand("test") {
-    override fun help(context: Context) = "Run a test. Assumes the planner is running and ready."
+    override fun help(context: Context) =
+        "Run a test against a planner."
 
     private val configFile: Path? by
         option("--config", help = "Path to a trakpi config file (.properties)").path(mustExist = true, canBeDir = false)
@@ -121,10 +141,16 @@ internal class Test<R : TravelPlannerRequest>(
         option("--reference-version", help = "Baseline version to compare against")
     private val testsetVersion: String by
         option("--testset-version", help = "Label of the request set being exercised").required()
+    private val start: Boolean by option("--start", help = "Start the planner before testing").flag()
+    private val stopOnCompletion: Boolean by
+        option("--stop-on-completion", help = "Stop the planner after testing, even if it fails").flag()
 
-    // TODO: --version is not yet used by the engine; it will select the prepared planner build.
+    // --version identifies the run: it labels every result and keys the archived responses a later run
+    // compares against.
     override fun run() {
         val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
+        if ((start || stopOnCompletion) && orchestrator == null)
+            throw UsageError("Orchestration is not configured for this planner.")
         val requestFileLoader = tester.requestFileLoader ?: DirectoryRequestFileLoader(loadConfig().requestsDir)
         val (plannerVersion, referencePlannerVersion, testset) =
             try {
@@ -136,25 +162,30 @@ internal class Test<R : TravelPlannerRequest>(
             } catch (e: IllegalArgumentException) {
                 throw UsageError(e.message ?: "Invalid version")
             }
-        Tester(
-                run =
-                    RunMetadata.create(
-                        version = plannerVersion,
-                        application = application,
-                        startedAt = Instant.now(),
-                        referenceVersion = referencePlannerVersion,
-                        testsetVersion = testset,
-                    ),
-                requestFileLoader = requestFileLoader,
-                requestLoader = tester.requestLoader,
-                travelPlanner = tester.travelPlanner,
-                kpiCalculators = tester.kpiCalculators,
-                resultsWriter = tester.resultsWriter,
-                comparativeKpiCalculators = tester.comparativeKpiCalculators,
-                resultsReader = tester.resultsReader,
-                referenceVersion = referencePlannerVersion,
-            )
-            .run()
+        try {
+            if (start) orchestrator!!.start(plannerVersion, null)
+            Tester(
+                    run =
+                        RunMetadata.create(
+                            version = plannerVersion,
+                            application = application,
+                            startedAt = Instant.now(),
+                            referenceVersion = referencePlannerVersion,
+                            testsetVersion = testset,
+                        ),
+                    requestFileLoader = requestFileLoader,
+                    requestLoader = tester.requestLoader,
+                    travelPlanner = tester.travelPlanner,
+                    kpiCalculators = tester.kpiCalculators,
+                    resultsWriter = tester.resultsWriter,
+                    comparativeKpiCalculators = tester.comparativeKpiCalculators,
+                    resultsReader = tester.resultsReader,
+                    referenceVersion = referencePlannerVersion,
+                )
+                .run()
+        } finally {
+            if (stopOnCompletion) orchestrator!!.stop(plannerVersion)
+        }
     }
 
     private fun loadConfig() =

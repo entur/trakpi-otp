@@ -47,13 +47,18 @@ fun main(args: Array<String>) {
             MinTransfersKPICalculator(),
             DepartureCountKPICalculator(),
         )
+    // When TRAKPI_OTP_IMAGE_REPO is set, start/stop manage an in-cluster OTP pod and test targets it;
+    // otherwise orchestration is off and test uses OTP_ENDPOINT, falling back to the dev API.
+    val orchestrator = OtpOrchestrator.createOrNull()
+    val endpoint = orchestrator?.endpoint() ?: System.getenv("OTP_ENDPOINT") ?: OTP_DEV_ENDPOINT
     runTrakpi(
         args,
         application = "otp",
+        orchestrator = orchestrator,
         tester =
             TesterConfig(
                 requestLoader = OtpRequestLoader(),
-                travelPlanner = OTPTravelPlanner(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev"),
+                travelPlanner = OTPTravelPlanner(endpoint, clientName = "entur-trakpi-dev"),
                 kpiCalculators = kpiCalculators,
                 resultsWriter = resultsWriter(),
                 comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
