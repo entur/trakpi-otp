@@ -19,7 +19,7 @@ spec:
       labels:
         app: trakpi-test
     spec:
-      serviceAccountName: ${SERVICE_ACCOUNT}
+      serviceAccountName: ${KSA_NAME}
       restartPolicy: Never
       initContainers:
         - name: reference
@@ -28,6 +28,9 @@ spec:
           env: &runenv
             - { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
             - { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
+            # Match prod's otp2 container (limit 20000Mi). The otp2 image sizes the JVM heap from the
+            # container limit, so we set no -Xmx.
+            - { name: TRAKPI_OTP_MEMORY, value: "20000Mi" }
             - { name: TRAKPI_BQ_PROJECT, value: "${GCP_PROJECT}" }
             - { name: TRAKPI_BQ_DATASET, value: "${BQ_DATASET}" }
             - { name: TRAKPI_BQ_TABLE, value: "${BQ_TABLE}" }

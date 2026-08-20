@@ -14,6 +14,9 @@ on:
       candidate_version:
         description: "Override the candidate version; blank = newest otp2 tag"
         required: false
+      trakpi_image:
+        description: "Override the trakpi image (repo:tag); blank = newest trakpi-otp tag"
+        required: false
 
 permissions:
   contents: read
@@ -22,15 +25,15 @@ permissions:
 env:
   # Deployment coordinates — set as repository variables so they stay out of the source.
   OTP_IMAGE_REPO: ${{ vars.TRAKPI_OTP_IMAGE_REPO }}
-  TRAKPI_IMAGE: ${{ vars.TRAKPI_IMAGE }} # the distroless trakpi image
+  TRAKPI_IMAGE_REPO: ${{ vars.TRAKPI_IMAGE_REPO }} # the distroless trakpi image, e.g. eu.gcr.io/entur-system-1287/trakpi-otp
   PROD_OTP_ENDPOINT: ${{ vars.PROD_OTP_ENDPOINT }} # https://api.entur.io/journey-planner/v3/graphql
   OTP_CLIENT_NAME: ${{ vars.OTP_CLIENT_NAME }} # ET-Client-Name for the serverInfo probe
   NAMESPACE: ${{ vars.TRAKPI_NAMESPACE }} # trakpiotp
-  SERVICE_ACCOUNT: ${{ vars.TRAKPI_SERVICE_ACCOUNT }} # the trakpi-test KSA, e.g. application
-  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-tst
-  GKE_LOCATION: ${{ vars.GKE_LOCATION }}
+  KSA_NAME: ${{ vars.TRAKPI_SERVICE_ACCOUNT }} # the trakpi-test pod's KSA (serviceAccountName), e.g. application
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-tst-001
+  GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west1
   GKE_PROJECT: ${{ vars.GKE_PROJECT }} # the cluster's project, e.g. ent-kub-tst
-  GCP_PROJECT: ${{ vars.GCP_PROJECT }} # the trakpi app project (BQ jobs, GOOGLE_CLOUD_PROJECT), e.g. ent-trakpiotp-tst
+  GCP_PROJECT: ${{ vars.GCP_PROJECT_ID }} # the trakpi app project (BQ jobs, GOOGLE_CLOUD_PROJECT); App Factory-provided, e.g. ent-trakpiotp-tst
   GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }} # ent-trakpiotp-tst-trakpi-archive
   BQ_DATASET: kpi_tracking
   BQ_TABLE: kpi_metrics_v1
@@ -39,13 +42,14 @@ env:
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment: tst # the GitHub Environment App Factory creates for this repo that the WIF variables below are scoped to
     steps:
       - uses: actions/checkout@v4
 
       - uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ vars.CI_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Resolve reference (prod) version
@@ -73,6 +77,18 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "candidate version: $version"
 
+      - name: Resolve trakpi image
+        id: trakpi
+        run: |
+          image="${{ inputs.trakpi_image }}"
+          if [ -z "$image" ]; then
+            tag=$(gcloud container images list-tags "$TRAKPI_IMAGE_REPO" --sort-by=~TIMESTAMP --limit=50 --format='value(tags)' | tr ';,' '\n\n' | grep -E '^main\.' | head -1)
+            if [ -z "$tag" ]; then echo "no trakpi-otp tag found in $TRAKPI_IMAGE_REPO" >&2; exit 1; fi
+            image="${TRAKPI_IMAGE_REPO}:${tag}"
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "trakpi image: $image"
+
       - name: Resolve latest testset
         id: testset
         run: |
@@ -93,6 +109,7 @@ jobs:
           PROD_VERSION: ${{ steps.prod.outputs.version }}
           CANDIDATE_VERSION: ${{ steps.candidate.outputs.version }}
           TESTSET: ${{ steps.testset.outputs.version }}
+          TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
         run: |
-          echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET"
+          echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET image=$TRAKPI_IMAGE"
           envsubst < deploy/nightly-job.yaml | kubectl create -f -
