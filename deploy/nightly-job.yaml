@@ -1,0 +1,51 @@
+# One trakpi-test pod runs two scoring passes: the reference run (prod) as an init container, which archives
+# its responses, then the candidate run (newest dev) as the main container, which compares against them.
+# Each pass is a single `trakpi test --start --stop-on-completion`, so it brings its own OTP pod up and tears
+# it down. POD_NAME/POD_UID (downward API) let OtpOrchestrator set the OTP pod's ownerReference to this pod,
+# so Kubernetes garbage-collects a leaked OTP pod if this pod is killed.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: trakpi-test-
+  namespace: ${NAMESPACE}
+  labels:
+    app: trakpi-test
+spec:
+  backoffLimit: 0 # a failed run is a failed run; don't silently retry
+  activeDeadlineSeconds: 14400 # 4h cap (two graph builds + two scoring passes)
+  ttlSecondsAfterFinished: 86400 # let Kubernetes clean the finished Job up after a day
+  template:
+    metadata:
+      labels:
+        app: trakpi-test
+    spec:
+      serviceAccountName: ${KSA_NAME}
+      restartPolicy: Never
+      initContainers:
+        - name: reference
+          image: ${TRAKPI_IMAGE}
+          args: ["test", "--version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          env: &runenv
+            - { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
+            - { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
+            # Match prod's otp2 container (limit 20000Mi). The otp2 image sizes the JVM heap from the
+            # container limit, so we set no -Xmx.
+            - { name: TRAKPI_OTP_MEMORY, value: "20000Mi" }
+            - { name: TRAKPI_BQ_PROJECT, value: "${GCP_PROJECT}" }
+            - { name: TRAKPI_BQ_DATASET, value: "${BQ_DATASET}" }
+            - { name: TRAKPI_BQ_TABLE, value: "${BQ_TABLE}" }
+            - { name: TRAKPI_GCS_BUCKET, value: "${GCS_BUCKET}" }
+            - { name: GOOGLE_CLOUD_PROJECT, value: "${GCP_PROJECT}" }
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { memory: "1Gi" }
+      containers:
+        - name: candidate
+          image: ${TRAKPI_IMAGE}
+          args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          env: *runenv
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { memory: "1Gi" }

@@ -5,7 +5,7 @@ metadata:
   displayName: TrakPi KPI Tracking
   name: trakpiotp
   owner: team-ror
-  trigger: 1783512163
+  trigger: 1783512164
 spec:
   environments: [tst]
   repositories: [trakpi-otp, trakpi-otp-deployment-config]
