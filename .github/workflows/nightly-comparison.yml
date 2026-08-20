@@ -33,7 +33,9 @@ env:
   GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-jp-tst-001
   GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west4
   GKE_PROJECT: ${{ vars.GKE_PROJECT }} # the cluster's project, e.g. ent-kub-tst
-  GCP_PROJECT: ${{ vars.GCP_PROJECT }} # the trakpi app project (BQ jobs, GOOGLE_CLOUD_PROJECT), e.g. ent-trakpiotp-tst
+  # Named APP_PROJECT, not GCP_PROJECT: gcloud/auth export their own GCP_PROJECT (the CI SA's project),
+  # which would shadow this. This is the trakpi app project for BQ + GOOGLE_CLOUD_PROJECT, e.g. ent-trakpiotp-tst.
+  APP_PROJECT: ${{ vars.GCP_PROJECT }}
   GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }} # ent-trakpiotp-tst-trakpi-archive
   BQ_DATASET: kpi_tracking
   BQ_TABLE: kpi_metrics_v1
@@ -110,5 +112,5 @@ jobs:
           TESTSET: ${{ steps.testset.outputs.version }}
           TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
         run: |
-          echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET image=$TRAKPI_IMAGE"
+          echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET image=$TRAKPI_IMAGE app=$APP_PROJECT"
           envsubst < deploy/nightly-job.yaml | kubectl create -f -
