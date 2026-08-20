@@ -8,6 +8,7 @@ import io.fabric8.kubernetes.api.model.PodBuilder
 import io.fabric8.kubernetes.api.model.PodSecurityContextBuilder
 import io.fabric8.kubernetes.api.model.Quantity
 import io.fabric8.kubernetes.api.model.ResourceRequirementsBuilder
+import io.fabric8.kubernetes.api.model.SecurityContextBuilder
 import io.fabric8.kubernetes.api.model.Service
 import io.fabric8.kubernetes.api.model.ServiceBuilder
 import io.fabric8.kubernetes.api.model.VolumeBuilder
@@ -108,6 +109,8 @@ class Fabric8OtpCluster(
                         .withName("fetch-config")
                         .withImage(config.configInitImage)
                         .withCommand("sh", "-c", "cp ${CONFIG_MOUNT}/* ${config.baseDir}/")
+                        // busybox has no non-root user, so pin a uid. It matches the fsGroup that owns the base volume.
+                        .withSecurityContext(restrictedSecurityContext(runAsUser = config.fsGroup ?: 1000))
                         .withVolumeMounts(base, configRo)
                         .build(),
                     otpContainer(BUILD_CONTAINERS[0], image, config.buildStreetArgs, base, expose = false),
@@ -116,7 +119,14 @@ class Fabric8OtpCluster(
                 .withContainers(otpContainer(SERVE_CONTAINER, image, config.serveArgs, base, expose = true))
                 .endSpec()
                 .build()
-        config.fsGroup?.let { pod.spec.securityContext = PodSecurityContextBuilder().withFsGroup(it).build() }
+        pod.spec.securityContext =
+            PodSecurityContextBuilder()
+                .withRunAsNonRoot(true)
+                .withNewSeccompProfile()
+                .withType("RuntimeDefault")
+                .endSeccompProfile()
+                .apply { config.fsGroup?.let { withFsGroup(it) } }
+                .build()
         pod.metadata.ownerReferences = ownerReferences()
         return pod
     }
@@ -126,6 +136,7 @@ class Fabric8OtpCluster(
             .withName(name)
             .withImage(image)
             .withImagePullPolicy(config.imagePullPolicy)
+            .withSecurityContext(restrictedSecurityContext())
             .withArgs(phaseArgs + config.baseDir)
             .withResources(
                 ResourceRequirementsBuilder()
@@ -139,6 +150,20 @@ class Fabric8OtpCluster(
             .withEnv(config.javaOpts?.let { listOf(EnvVar("JAVA_TOOL_OPTIONS", it, null)) } ?: emptyList())
             .withVolumeMounts(base)
             .apply { if (expose) addNewPort().withContainerPort(config.port).endPort() }
+            .build()
+
+    /** Container security context satisfying the "restricted" Pod Security Standard the cluster enforces. */
+    private fun restrictedSecurityContext(runAsUser: Long? = null) =
+        SecurityContextBuilder()
+            .withAllowPrivilegeEscalation(false)
+            .withRunAsNonRoot(true)
+            .apply { runAsUser?.let { withRunAsUser(it) } }
+            .withNewCapabilities()
+            .withDrop("ALL")
+            .endCapabilities()
+            .withNewSeccompProfile()
+            .withType("RuntimeDefault")
+            .endSeccompProfile()
             .build()
 
     private fun service(): Service =

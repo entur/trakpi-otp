@@ -21,10 +21,22 @@ spec:
     spec:
       serviceAccountName: ${KSA_NAME}
       restartPolicy: Never
+      # The cluster enforces the "restricted" Pod Security Standard, so pod and containers must declare it.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: reference
           image: ${TRAKPI_IMAGE}
           args: ["test", "--version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          securityContext: &secctx
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
           env: &runenv
             - { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
             - { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
@@ -45,6 +57,7 @@ spec:
         - name: candidate
           image: ${TRAKPI_IMAGE}
           args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          securityContext: *secctx
           env: *runenv
           resources:
             requests: { cpu: "500m", memory: "1Gi" }
