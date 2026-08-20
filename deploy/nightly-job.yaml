@@ -22,8 +22,11 @@ spec:
       serviceAccountName: ${KSA_NAME}
       restartPolicy: Never
       # The cluster enforces the "restricted" Pod Security Standard, so pod and containers must declare it.
+      # runAsUser pins the distroless "nonroot" uid numerically. The kubelet can't verify a non-numeric
+      # image user against runAsNonRoot, so it must be a number.
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
       initContainers:
