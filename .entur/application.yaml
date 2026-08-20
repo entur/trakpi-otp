@@ -8,6 +8,11 @@ metadata:
   trigger: 1783512164
 spec:
   environments: [tst]
+  # Run on the journey-planner cluster group (kub-ent-jp-*), alongside OTP, so the comparison
+  # Job's OTP pods schedule on nodes sized for the graph. This provisions the namespace and the
+  # service accounts' Workload Identity bindings on that cluster.
+  kubernetes:
+    clusterGroup: journeyPlanner
   repositories: [trakpi-otp, trakpi-otp-deployment-config]
   # Dedicated Workload-Identity-wired identity for the testset prepare CronJob (deployed from the
   # deployment-config repo).
