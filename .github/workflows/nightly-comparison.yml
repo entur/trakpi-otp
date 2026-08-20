@@ -30,8 +30,8 @@ env:
   OTP_CLIENT_NAME: ${{ vars.OTP_CLIENT_NAME }} # ET-Client-Name for the serverInfo probe
   NAMESPACE: ${{ vars.TRAKPI_NAMESPACE }} # trakpiotp
   KSA_NAME: ${{ vars.TRAKPI_SERVICE_ACCOUNT }} # the trakpi-test pod's KSA (serviceAccountName), e.g. application
-  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-tst-001
-  GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west1
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-jp-tst-001
+  GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west4
   GKE_PROJECT: ${{ vars.GKE_PROJECT }} # the cluster's project, e.g. ent-kub-tst
   GCP_PROJECT: ${{ vars.GCP_PROJECT }} # the trakpi app project (BQ jobs, GOOGLE_CLOUD_PROJECT), e.g. ent-trakpiotp-tst
   GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }} # ent-trakpiotp-tst-trakpi-archive
