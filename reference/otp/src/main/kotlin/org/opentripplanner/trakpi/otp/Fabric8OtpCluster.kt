@@ -109,8 +109,8 @@ class Fabric8OtpCluster(
                         .withName("fetch-config")
                         .withImage(config.configInitImage)
                         .withCommand("sh", "-c", "cp ${CONFIG_MOUNT}/* ${config.baseDir}/")
-                        // busybox has no non-root user, so pin a uid. It matches the fsGroup that owns the base volume.
-                        .withSecurityContext(restrictedSecurityContext(runAsUser = config.fsGroup ?: 1000))
+                        // Runs as the pod-level runAsUser (busybox has no non-root user of its own).
+                        .withSecurityContext(restrictedSecurityContext())
                         .withVolumeMounts(base, configRo)
                         .build(),
                     otpContainer(BUILD_CONTAINERS[0], image, config.buildStreetArgs, base, expose = false),
@@ -126,6 +126,9 @@ class Fabric8OtpCluster(
                 .withType("RuntimeDefault")
                 .endSeccompProfile()
                 .apply { config.fsGroup?.let { withFsGroup(it) } }
+                // Pod-level so every container (busybox init + the otp2 build/serve containers, whose
+                // "appuser" is non-numeric) runs as a verifiable non-root uid.
+                .apply { config.runAsUser?.let { withRunAsUser(it) } }
                 .build()
         pod.metadata.ownerReferences = ownerReferences()
         return pod
@@ -153,11 +156,10 @@ class Fabric8OtpCluster(
             .build()
 
     /** Container security context satisfying the "restricted" Pod Security Standard the cluster enforces. */
-    private fun restrictedSecurityContext(runAsUser: Long? = null) =
+    private fun restrictedSecurityContext() =
         SecurityContextBuilder()
             .withAllowPrivilegeEscalation(false)
             .withRunAsNonRoot(true)
-            .apply { runAsUser?.let { withRunAsUser(it) } }
             .withNewCapabilities()
             .withDrop("ALL")
             .endCapabilities()

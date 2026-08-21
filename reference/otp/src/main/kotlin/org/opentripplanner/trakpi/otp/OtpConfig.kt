@@ -26,6 +26,10 @@ data class OtpConfig(
     val ephemeralStorage: String = "50Gi",
     val javaOpts: String? = null,
     val fsGroup: Long? = 1000,
+    // The OTP image runs as a named non-root user ("appuser"), which the kubelet can't verify against
+    // runAsNonRoot. We pin its numeric uid so the pod is admitted and 1000 is the Buildbox default.
+    // Can be overridden via TRAKPI_OTP_RUN_AS_USER if the image differs.
+    val runAsUser: Long? = 1000,
     val imagePullPolicy: String = "IfNotPresent",
     // Identity of the pod trakpi runs in, set as the OTP pod's ownerReference so Kubernetes garbage-collects
     // the OTP pod if that pod dies before stop runs. Null (e.g. local runs) → no owner reference.
@@ -62,6 +66,7 @@ data class OtpConfig(
                 ephemeralStorage = env("TRAKPI_OTP_EPHEMERAL_STORAGE") ?: "50Gi",
                 javaOpts = env("TRAKPI_OTP_JAVA_OPTS"),
                 fsGroup = env("TRAKPI_OTP_FS_GROUP")?.toLong() ?: 1000,
+                runAsUser = env("TRAKPI_OTP_RUN_AS_USER")?.toLong() ?: 1000,
                 imagePullPolicy = env("TRAKPI_OTP_IMAGE_PULL_POLICY") ?: "IfNotPresent",
                 ownerPodName = env("POD_NAME"),
                 ownerPodUid = env("POD_UID"),
