@@ -25,7 +25,10 @@ class OtpStationSnapper(private val endpoint: String, private val clientName: St
 
     private fun fetchStations(): List<Coordinate> {
         println("Fetching transit stations from $endpoint ...")
-        val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+        // HTTP/1.1 explicitly: the default HTTP/2 client's h2c upgrade over cleartext http can truncate a
+        // POST body against OTP's Grizzly servers, resulting in an EOFException.
+        val http =
+            HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build()
         val request =
             HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))

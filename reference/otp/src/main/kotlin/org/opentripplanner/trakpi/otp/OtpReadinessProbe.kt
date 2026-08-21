@@ -19,7 +19,10 @@ fun interface OtpReadinessProbe {
 
 /** Probes readiness by asking OTP for its `serverInfo`; treats any transport error as "not ready yet". */
 class ServerInfoProbe(private val clientName: String) : OtpReadinessProbe {
-    private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+    // HTTP/1.1 explicitly: the default HTTP/2 client's h2c upgrade over cleartext http can truncate a
+    // POST body against OTP's Grizzly servers, resulting in an EOFException.
+    private val http =
+        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build()
 
     override fun responds(endpoint: String): Boolean =
         try {

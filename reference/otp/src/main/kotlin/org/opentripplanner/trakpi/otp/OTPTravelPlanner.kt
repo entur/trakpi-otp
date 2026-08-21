@@ -19,7 +19,10 @@ class OTPTravelPlanner(
     private val endpoint: String,
     private val clientName: String,
 ) : TravelPlanner<OtpTravelPlannerRequest> {
-    private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+    // HTTP/1.1 explicitly: the default HTTP/2 client's h2c upgrade over cleartext http can truncate a
+    // POST body against OTP's Grizzly servers, resulting in an EOFException.
+    private val http =
+        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build()
 
     override fun execute(request: OtpTravelPlannerRequest): TravelPlannerResponse {
         val body =
