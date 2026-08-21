@@ -43,11 +43,13 @@ spec:
           env: &runenv
             - { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
             - { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
-            # Must fit a c4d-standard-8 node's allocatable memory.
-            # Heap is 75% of this (MaxRAMPercentage) — raise toward the node's allocatable to grow build heap.
-            - { name: TRAKPI_OTP_MEMORY, value: "22000Mi" }
+            # Node allocatable is ~27447Mi; daemonsets take ~2Gi (26000Mi did not schedule), so ~25.4Gi is
+            # schedulable. 24000Mi fits with headroom; heap is 80% of it (~19Gi), near entur's builder's 20g.
+            - { name: TRAKPI_OTP_MEMORY, value: "24000Mi" }
             # Keep the storage request under the node's max allocatable ephemeral storage.
             - { name: TRAKPI_OTP_EPHEMERAL_STORAGE, value: "30Gi" }
+            # The full Norway build (street + transit) plus serve startup can exceed the 40-min default.
+            - { name: TRAKPI_OTP_READINESS_TIMEOUT_SECONDS, value: "5400" }
             - { name: TRAKPI_BQ_PROJECT, value: "${APP_PROJECT}" }
             - { name: TRAKPI_BQ_DATASET, value: "${BQ_DATASET}" }
             - { name: TRAKPI_BQ_TABLE, value: "${BQ_TABLE}" }
