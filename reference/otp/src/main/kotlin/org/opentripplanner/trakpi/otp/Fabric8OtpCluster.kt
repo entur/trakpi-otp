@@ -38,7 +38,7 @@ class Fabric8OtpCluster(
     override fun probeStatus(): ClusterStatus {
         val pod =
             client.pods().inNamespace(config.namespace).withName(config.podName).get()
-                ?: return ClusterStatus(present = false, ready = false, phase = "absent", failure = null)
+                ?: return ClusterStatus(present = false, ready = false, stateDescription = "absent", failure = null)
         val init = pod.status?.initContainerStatuses ?: emptyList()
         val main = pod.status?.containerStatuses ?: emptyList()
         val failure =
@@ -50,11 +50,23 @@ class Fabric8OtpCluster(
                     cs.state?.terminated?.let { ContainerFailure(cs.name, it.exitCode) }
                 }
                 ?: if (pod.status?.phase == "Failed") ContainerFailure(config.podName, -1) else null
-        val phase = (init + main).firstOrNull { it.state?.running != null }?.name ?: pod.status?.phase ?: "scheduling"
+        val runningContainerName = (init + main).firstOrNull { it.state?.running != null }?.name
+        val waitingReason =
+            (init + main).firstNotNullOfOrNull { cs ->
+                cs.state?.waiting?.takeIf { it.reason != null && it.reason != "PodInitializing" }?.let { w ->
+                    "${cs.name}: ${w.reason}${w.message?.let { " - $it" } ?: ""}"
+                }
+            }
+        val unschedulableReason =
+            pod.status?.conditions?.firstOrNull { it.type == "PodScheduled" && it.status != "True" }?.let {
+                "${it.reason}: ${it.message}"
+            }
+        val stateDescription =
+            runningContainerName ?: waitingReason ?: unschedulableReason ?: pod.status?.phase ?: "scheduling"
         // Once the container is actually up, we can also probe if it responds
         val serving = main.any { it.name == SERVE_CONTAINER && it.state?.running != null }
         val ready = failure == null && serving && probe.responds(endpoint())
-        return ClusterStatus(present = true, ready = ready, phase = phase, failure = failure)
+        return ClusterStatus(present = true, ready = ready, stateDescription = stateDescription, failure = failure)
     }
 
     override fun logs(container: String?): String {

@@ -22,13 +22,12 @@ interface OtpCluster {
 
 /**
  * A point-in-time view of the OTP instance: [present] whether the pod exists at all, [ready] once it
- * answers `serverInfo`, [failure] set when a build container has died, and [phase] a human description of
- * what is running, for progress logging.
+ * answers `serverInfo`, [failure] set when a build container has died, and [stateDescription].
  */
 data class ClusterStatus(
     val present: Boolean,
     val ready: Boolean,
-    val phase: String,
+    val stateDescription: String,
     val failure: ContainerFailure?,
 )
 

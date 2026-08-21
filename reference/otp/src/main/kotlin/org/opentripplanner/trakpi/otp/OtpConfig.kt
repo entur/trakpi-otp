@@ -10,7 +10,7 @@ import java.time.Duration
 private val DEFAULT_OTP_JVM_ARGS =
     listOf(
         "-server",
-        "-Xmx20g",
+        "-XX:MaxRAMPercentage=75.0",
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
         "--add-opens=java.base/java.nio=ALL-UNNAMED",
         "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",

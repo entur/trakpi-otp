@@ -40,7 +40,7 @@ class OtpOrchestrator(private val cluster: OtpCluster, private val config: OtpCo
                         "OTP container '${status.failure.container}' failed (exit ${status.failure.exitCode})" +
                             cluster.logs(status.failure.container)
                     )
-                else -> log("waiting... Phase: ${status.phase}")
+                else -> log("waiting... ${status.stateDescription}")
             }
             Thread.sleep(config.pollInterval.toMillis())
         }
@@ -53,7 +53,7 @@ class OtpOrchestrator(private val cluster: OtpCluster, private val config: OtpCo
         while (Instant.now().isBefore(deletionDeadline)) {
             val status = cluster.probeStatus()
             if (!status.present) return
-            log("tearing down... Phase: ${status.phase}")
+            log("tearing down... ${status.stateDescription}")
             Thread.sleep(config.pollInterval.toMillis())
         }
         throw OtpStartupException("OTP pod ${config.podName} was not deleted within ${config.deletionTimeout}")
