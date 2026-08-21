@@ -3,6 +3,23 @@ package org.opentripplanner.trakpi.otp
 import java.time.Duration
 
 /**
+ * JVM flags OTP needs to build and serve on the otp2 image's JDK: the module opens plus the
+ * native-access and unsafe-memory flags recent JDKs require, and a build/serve heap. These mirror
+ * entur's own otp2 graph-builder. Override with TRAKPI_OTP_JVM_ARGS.
+ */
+private val DEFAULT_OTP_JVM_ARGS =
+    listOf(
+        "-server",
+        "-Xmx20g",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "--sun-misc-unsafe-memory-access=allow",
+        "-Dfile.encoding=UTF-8",
+    )
+
+/**
  * Configuration for running OTP under test in Kubernetes. Only [imageRepo] is required; the rest default
  * and are overridable via `TRAKPI_OTP_*` env vars (surfaced in the trakpi-test Helm values), so nothing
  * cluster- or environment-specific is compiled in.
@@ -24,7 +41,10 @@ data class OtpConfig(
     val memory: String = "16Gi",
     val cpu: String = "4",
     val ephemeralStorage: String = "50Gi",
-    val javaOpts: String? = null,
+    // OTP is launched directly (java -jar <otpJar> <phase args>), overriding the image's serve-download
+    // entrypoint so build/serve phase args reach OTP. jvmArgs carry the flags and heap OTP needs.
+    val otpJar: String = "otp-shaded.jar",
+    val jvmArgs: List<String> = DEFAULT_OTP_JVM_ARGS,
     val fsGroup: Long? = 1000,
     // The OTP image runs as a named non-root user ("appuser"), which the kubelet can't verify against
     // runAsNonRoot. We pin its numeric uid so the pod is admitted and 1000 is the Buildbox default.
@@ -64,7 +84,8 @@ data class OtpConfig(
                 memory = env("TRAKPI_OTP_MEMORY") ?: "16Gi",
                 cpu = env("TRAKPI_OTP_CPU") ?: "4",
                 ephemeralStorage = env("TRAKPI_OTP_EPHEMERAL_STORAGE") ?: "50Gi",
-                javaOpts = env("TRAKPI_OTP_JAVA_OPTS"),
+                otpJar = env("TRAKPI_OTP_JAR") ?: "otp-shaded.jar",
+                jvmArgs = args("TRAKPI_OTP_JVM_ARGS", DEFAULT_OTP_JVM_ARGS),
                 fsGroup = env("TRAKPI_OTP_FS_GROUP")?.toLong() ?: 1000,
                 runAsUser = env("TRAKPI_OTP_RUN_AS_USER")?.toLong() ?: 1000,
                 imagePullPolicy = env("TRAKPI_OTP_IMAGE_PULL_POLICY") ?: "IfNotPresent",

@@ -140,6 +140,9 @@ class Fabric8OtpCluster(
             .withImage(image)
             .withImagePullPolicy(config.imagePullPolicy)
             .withSecurityContext(restrictedSecurityContext())
+            // Launch OTP directly rather than the image's serve-download entrypoint, so our build/serve
+            // phase args reach OTP instead of the graph wrapper (which only downloads a prebuilt graph).
+            .withCommand(listOf("java") + config.jvmArgs + listOf("-jar", config.otpJar))
             .withArgs(phaseArgs + config.baseDir)
             .withResources(
                 ResourceRequirementsBuilder()
@@ -150,7 +153,7 @@ class Fabric8OtpCluster(
                     .addToLimits("ephemeral-storage", Quantity(config.ephemeralStorage))
                     .build()
             )
-            .withEnv(config.javaOpts?.let { listOf(EnvVar("JAVA_TOOL_OPTIONS", it, null)) } ?: emptyList())
+            .withEnv(EnvVar("TZ", "Europe/Oslo", null))
             .withVolumeMounts(base)
             .apply { if (expose) addNewPort().withContainerPort(config.port).endPort() }
             .build()

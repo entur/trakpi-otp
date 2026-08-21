@@ -43,9 +43,9 @@ spec:
           env: &runenv
             - { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
             - { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
-            # Match prod's otp2 container (limit 20000Mi). The otp2 image sizes the JVM heap from the
-            # container limit, so we set no -Xmx.
-            - { name: TRAKPI_OTP_MEMORY, value: "20000Mi" }
+            # Sized for the in-pod graph build, matching entur's otp2 graph-builder (~26000Mi container,
+            # ~20g heap, set in DEFAULT_OTP_JVM_ARGS / TRAKPI_OTP_JVM_ARGS).
+            - { name: TRAKPI_OTP_MEMORY, value: "26000Mi" }
             # Keep the storage request under the node's max allocatable ephemeral storage.
             - { name: TRAKPI_OTP_EPHEMERAL_STORAGE, value: "30Gi" }
             - { name: TRAKPI_BQ_PROJECT, value: "${APP_PROJECT}" }
