@@ -7,6 +7,13 @@ adapters. Trakπ exposes a small SPI for this purpose, and includes a command li
 library in your project, implement the adapters and wire up the CLI. A reference implementation made for testing
 [OpenTripPlanner](https://github.com/opentripplanner/OpenTripPlanner) is provided in reference/otp.
 
+### Why the name Trakπ?
+
+- It is short for **Trak**ing **P**erformance **I**ndicators, with π standing in for "PI".
+- Pi (π) in mathematics is the ratio of a circle's circumference to its diameter. It does not change when
+  the diameter changes, like the goal of the Trakπ tool: we want to measure values/KPIs that don't change
+  but that describe important aspects of the system under test.
+
 ## User guide
 TODO
 
@@ -51,14 +58,23 @@ To use the OTP reference (`reference/otp`) with a local build of trakpi.core, bu
 
 ## Goals
 
-The goal of Trakπ is to measure _travel planner_ quality. We want to build a general tool to issue travel planning requests and to build a history of planning results to analyze. 
+Many test tools validate the result by matching the result to an expected value. However, this approach does not scale well to a large number of test cases, and false positives are common with a high maintenance cost. This tool is designed to have zero test-case maintenance cost. Therefore;
 
-What is the _best_ itinerary in a given case is subjective. Therefore; We need to come up with a good way of comparing results in an objective way. The idea is to develop a set of _Key Performance Indicators (KPIs)_. With KPIs we can compare any set of travel planning results.
+- We instead compute _Key Performance Indicators (KPIs)_ for each test case/test run. These can be compared with a reference (production) and tracked over time. A KPI can be generic (response time, HTTP status code, number of graphql errors) or query specific (minimum number of transfers in the result of a trip planning call, name matches when looking up entities, findXById).
+- What is the _best_ itinerary in a given case is subjective. So, instead of comparing two itineraries, we can decompose it and compare key component values instead, like number-of-transfers, walk-distance, operator-spread, minimum-waiting-time, etc.
+- By tracking KPIs over time, we can discover changes caused by bugs and changes in data. We can also measure improvements in quality.
 
 
 ## Key Performance Indicators (KPIs)
 We can compute KPIs for each test case and then compare average and standard deviation for each test run in a selected set of samples. Here is a list of possible KPIs that would be interesting
 - Success based on dynamic criteria (dynamic criteria?)
+- Number of transfers
+- Walk distance
+- Minimum waiting time
+- Minimum travel time
+- Earliest arrival time (after search start time)
+- Latest departure time (arrive-by search)
+- Number of errors (GraphQL errors)
 - Number of itineraries returned (is that useful?)
   - Why: The timeline of development of itinerary counts can tell us if a change caused more or fewer itineraries.
   - This doesn't say anything about whether a change is good or bad, but it 
