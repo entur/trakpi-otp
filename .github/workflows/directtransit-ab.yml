@@ -1,0 +1,92 @@
+name: Direct-transit-search A/B
+
+# On-demand config A/B: same OTP image, directTransitSearch off vs on (baseline otp-config ConfigMap vs
+# otp-config-dts). Resolves the OTP image, trakpi image and latest testset, then creates the A/B Job.
+on:
+  workflow_dispatch:
+    inputs:
+      otp_tag:
+        description: "otp2 image tag to run both passes on; blank = newest otp2 tag"
+        required: false
+      testset:
+        description: "Testset version; blank = latest in the bucket"
+        required: false
+      trakpi_image:
+        description: "Override the trakpi image (repo:tag); blank = newest trakpi-otp tag"
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  OTP_IMAGE_REPO: ${{ vars.TRAKPI_OTP_IMAGE_REPO }}
+  TRAKPI_IMAGE_REPO: ${{ vars.TRAKPI_IMAGE_REPO }}
+  NAMESPACE: ${{ vars.TRAKPI_NAMESPACE }}
+  KSA_NAME: ${{ vars.TRAKPI_SERVICE_ACCOUNT }}
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-jp-tst-001
+  GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west4
+  GKE_PROJECT: ${{ vars.GKE_PROJECT }} # ent-kub-tst
+  APP_PROJECT: ${{ vars.GCP_PROJECT }} # ent-trakpiotp-tst
+  GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }}
+  BQ_DATASET: kpi_tracking
+  BQ_TABLE: kpi_metrics_v1
+  TESTSET_API: transmodel
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.CI_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve OTP tag
+        id: otp
+        run: |
+          tag="${{ inputs.otp_tag }}"
+          if [ -z "$tag" ]; then
+            tag=$(gcloud container images list-tags "$OTP_IMAGE_REPO" --sort-by=~TIMESTAMP --limit=1 --format='value(tags)' | tr ';,' '\n\n' | grep -E '^v.*-entur-[0-9]+$' | head -1)
+          fi
+          if [ -z "$tag" ]; then echo "no otp2 tag found" >&2; exit 1; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve trakpi image
+        id: trakpi
+        run: |
+          image="${{ inputs.trakpi_image }}"
+          if [ -z "$image" ]; then
+            t=$(gcloud container images list-tags "$TRAKPI_IMAGE_REPO" --sort-by=~TIMESTAMP --limit=50 --format='value(tags)' | tr ';,' '\n\n' | grep -E '^main\.' | head -1)
+            image="${TRAKPI_IMAGE_REPO}:${t}"
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve testset
+        id: testset
+        run: |
+          v="${{ inputs.testset }}"
+          if [ -z "$v" ]; then
+            v=$(gsutil ls "gs://${GCS_BUCKET}/testsets/${TESTSET_API}/" | sed 's#/$##' | awk -F/ 'NF{print $NF}' | sort | tail -1)
+          fi
+          if [ -z "$v" ]; then echo "no testset found" >&2; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GKE_PROJECT }}
+
+      - name: Create the A/B Job
+        env:
+          OFF_TAG: ${{ steps.otp.outputs.tag }}
+          ON_TAG: ${{ steps.otp.outputs.tag }}
+          TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
+          TESTSET: ${{ steps.testset.outputs.version }}
+        run: |
+          echo "otp=$OFF_TAG testset=$TESTSET image=$TRAKPI_IMAGE app=$APP_PROJECT"
+          envsubst < deploy/directtransit-ab-job.yaml | kubectl create -f -
