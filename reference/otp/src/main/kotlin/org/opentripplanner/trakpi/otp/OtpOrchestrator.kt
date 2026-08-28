@@ -14,7 +14,7 @@ class OtpOrchestrator(private val cluster: OtpCluster, private val config: OtpCo
     fun endpoint(): String = cluster.endpoint()
 
     override fun start(version: PlannerVersion, args: String?) {
-        val image = "${config.imageRepo}:${version.value}"
+        val image = "${config.imageRepo}:${config.imageTag ?: version.value}"
         log("Starting OTP $image (pod ${config.podName})")
         cluster.teardown()
         awaitGone()

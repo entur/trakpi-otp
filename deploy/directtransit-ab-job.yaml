@@ -1,0 +1,79 @@
+# One-off A/B: same OTP image, direct-transit-search off vs on, driven purely by the config the OTP pod
+# mounts. The baseline pass (reference) uses the otp-config ConfigMap. The candidate pass uses otp-config-dts,
+# which is identical but with directTransitSearch enabled, and compares against the baseline. Apply with:
+#   envsubst < deploy/directtransit-ab-job.yaml | kubectl -n <ns> create -f -
+# with OFF_TAG/ON_TAG set to two distinct valid otp2 tags. The images are effectively identical. The config
+# is the only difference.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: trakpi-dts-ab-
+  namespace: ${NAMESPACE}
+  labels:
+    app: trakpi-test
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: trakpi-test
+    spec:
+      serviceAccountName: ${KSA_NAME}
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: reference
+          image: ${TRAKPI_IMAGE}
+          args: ["test", "--version", "dts-off", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          securityContext: &secctx
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - { name: TRAKPI_OTP_CONFIGMAP, value: "otp-config" }
+            - &imagetag { name: TRAKPI_OTP_IMAGE_TAG, value: "${OFF_TAG}" }
+            - &otpenv0 { name: TRAKPI_OTP_IMAGE_REPO, value: "${OTP_IMAGE_REPO}" }
+            - &otpenv1 { name: TRAKPI_OTP_NAMESPACE, value: "${NAMESPACE}" }
+            - &otpenv2 { name: TRAKPI_OTP_MEMORY, value: "24000Mi" }
+            - &otpenv3 { name: TRAKPI_OTP_EPHEMERAL_STORAGE, value: "30Gi" }
+            - &otpenv4 { name: TRAKPI_OTP_READINESS_TIMEOUT_SECONDS, value: "5400" }
+            - &bq0 { name: TRAKPI_BQ_PROJECT, value: "${APP_PROJECT}" }
+            - &bq1 { name: TRAKPI_BQ_DATASET, value: "${BQ_DATASET}" }
+            - &bq2 { name: TRAKPI_BQ_TABLE, value: "${BQ_TABLE}" }
+            - &gcs { name: TRAKPI_GCS_BUCKET, value: "${GCS_BUCKET}" }
+            - &gcp { name: GOOGLE_CLOUD_PROJECT, value: "${APP_PROJECT}" }
+            - &podname { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - &poduid { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
+          resources: &res
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { memory: "1Gi" }
+      containers:
+        - name: candidate
+          image: ${TRAKPI_IMAGE}
+          args: ["test", "--version", "dts-on", "--reference-version", "dts-off", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          securityContext: *secctx
+          env:
+            - { name: TRAKPI_OTP_CONFIGMAP, value: "otp-config-dts" }
+            - { name: TRAKPI_OTP_IMAGE_TAG, value: "${ON_TAG}" }
+            - *otpenv0
+            - *otpenv1
+            - *otpenv2
+            - *otpenv3
+            - *otpenv4
+            - *bq0
+            - *bq1
+            - *bq2
+            - *gcs
+            - *gcp
+            - *podname
+            - *poduid
+          resources: *res

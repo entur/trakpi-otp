@@ -51,6 +51,8 @@ data class OtpConfig(
     // Can be overridden via TRAKPI_OTP_RUN_AS_USER if the image differs.
     val runAsUser: Long? = 1000,
     val imagePullPolicy: String = "IfNotPresent",
+    // Image tag to pull, when it should differ from the run's --version label. Defaults to the version.
+    val imageTag: String? = null,
     // Identity of the pod trakpi runs in, set as the OTP pod's ownerReference so Kubernetes garbage-collects
     // the OTP pod if that pod dies before stop runs. Null (e.g. local runs) → no owner reference.
     val ownerPodName: String? = null,
@@ -89,6 +91,7 @@ data class OtpConfig(
                 fsGroup = env("TRAKPI_OTP_FS_GROUP")?.toLong() ?: 1000,
                 runAsUser = env("TRAKPI_OTP_RUN_AS_USER")?.toLong() ?: 1000,
                 imagePullPolicy = env("TRAKPI_OTP_IMAGE_PULL_POLICY") ?: "IfNotPresent",
+                imageTag = env("TRAKPI_OTP_IMAGE_TAG"),
                 ownerPodName = env("POD_NAME"),
                 ownerPodUid = env("POD_UID"),
                 readinessTimeout = env("TRAKPI_OTP_READINESS_TIMEOUT_SECONDS")?.toLong()?.let(Duration::ofSeconds)
