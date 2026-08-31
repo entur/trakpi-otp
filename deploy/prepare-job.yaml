@@ -1,0 +1,49 @@
+# One-shot testset prepare: reads the prod request log from BigQuery, cleans and snaps the requests, and
+# writes a fresh testset to the archive bucket under the prod release it was built for (--version). Created
+# on demand by .github/workflows/prepare.yml only when no testset yet exists for the current prod release,
+# so the testset rotates with prod releases rather than daily.
+# Runs as the prepare KSA (deneir request-log read + archive-bucket write).
+#   envsubst < deploy/prepare-job.yaml | kubectl create -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: trakpi-prepare-
+  namespace: ${NAMESPACE}
+  labels:
+    app: trakpi-prepare
+spec:
+  backoffLimit: 0 # a failed prepare is a failed prepare; don't silently retry
+  activeDeadlineSeconds: 3600 # 1h cap; sourcing + snapping the request set is minutes, not hours
+  ttlSecondsAfterFinished: 86400 # let Kubernetes clean the finished Job up after a day
+  template:
+    metadata:
+      labels:
+        app: trakpi-prepare
+    spec:
+      serviceAccountName: ${KSA_NAME}
+      restartPolicy: Never
+      # The cluster enforces the "restricted" Pod Security Standard. runAsUser pins the distroless
+      # "nonroot" uid numerically: the kubelet can't verify a non-numeric image user against runAsNonRoot.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prepare
+          image: ${TRAKPI_IMAGE}
+          args: ["testset", "prepare", "--version", "${PROD_VERSION}"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - { name: TRAKPI_REQUESTS_ENV, value: "prd" }
+            - { name: TRAKPI_GCS_BUCKET, value: "${GCS_BUCKET}" }
+            - { name: GOOGLE_CLOUD_PROJECT, value: "${APP_PROJECT}" }
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { memory: "1Gi" }

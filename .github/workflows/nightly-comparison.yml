@@ -90,11 +90,18 @@ jobs:
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "trakpi image: $image"
 
-      - name: Resolve latest testset
+      - name: Resolve the testset for the reference release
         id: testset
+        env:
+          PROD_VERSION: ${{ steps.prod.outputs.version }}
         run: |
-          version=$(gsutil ls "gs://${GCS_BUCKET}/testsets/${TESTSET_API}/" | sed 's#/$##' | awk -F/ 'NF{print $NF}' | sort | tail -1)
-          if [ -z "$version" ]; then echo "no testset found under gs://${GCS_BUCKET}/testsets/${TESTSET_API}/" >&2; exit 1; fi
+          # Testsets are labelled by the prod release they were built for, so the reference run uses the one
+          # for the prod version resolved above (dropping the image-tag 'v' prefix).
+          version="${PROD_VERSION#v}"
+          if ! gsutil ls "gs://${GCS_BUCKET}/testsets/${TESTSET_API}/${version}/" >/dev/null 2>&1; then
+            echo "No testset for prod release $version under gs://${GCS_BUCKET}/testsets/${TESTSET_API}/. Has the prepare workflow run for this release?" >&2
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "testset: $version"
 

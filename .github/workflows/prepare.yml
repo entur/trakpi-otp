@@ -1,0 +1,97 @@
+name: Testset prepare
+
+# Rotates the testset with prod releases only. Runs daily, but probes prod's serverInfo and rebuilds the
+# testset only when no testset yet exists for the current prod OTP release.
+# Testsets are labelled by the release version. Same create-a-Job shape as nightly-comparison.yml.
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC = 04:00 Oslo; before the 05:00 comparison run. UTC.
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild even if the prod release is unchanged"
+        type: boolean
+        default: false
+      trakpi_image:
+        description: "Override the trakpi image (repo:tag); blank = newest trakpi-otp tag"
+        required: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC / Workload Identity Federation
+
+env:
+  TRAKPI_IMAGE_REPO: ${{ vars.TRAKPI_IMAGE_REPO }} # the distroless trakpi image, e.g. eu.gcr.io/entur-system-1287/trakpi-otp
+  PROD_OTP_ENDPOINT: ${{ vars.PROD_OTP_ENDPOINT }} # https://api.entur.io/journey-planner/v3/graphql
+  OTP_CLIENT_NAME: ${{ vars.OTP_CLIENT_NAME }} # ET-Client-Name for the serverInfo probe
+  NAMESPACE: ${{ vars.TRAKPI_NAMESPACE }} # trakpiotp
+  KSA_NAME: prepare # the prepare pod's KSA (deneir read + archive write), App-Factory-wired to prepare@
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }} # kub-ent-jp-tst-001
+  GKE_LOCATION: ${{ vars.GKE_LOCATION }} # europe-west4
+  GKE_PROJECT: ${{ vars.GKE_PROJECT }} # the cluster's project, e.g. ent-kub-tst
+  # Named APP_PROJECT, not GCP_PROJECT: gcloud/auth export their own GCP_PROJECT (the CI SA's project),
+  # which would shadow this. This is the trakpi app project for GOOGLE_CLOUD_PROJECT, e.g. ent-trakpiotp-tst.
+  APP_PROJECT: ${{ vars.GCP_PROJECT }}
+  GCS_BUCKET: ${{ vars.TRAKPI_GCS_BUCKET }} # ent-trakpiotp-tst-trakpi-archive
+  TESTSET_API: transmodel
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.CI_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CI_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Gate on the prod release
+        id: gate
+        run: |
+          resp=$(curl -sf -m 30 -X POST "$PROD_OTP_ENDPOINT" -H 'Content-Type: application/json' -H "ET-Client-Name: $OTP_CLIENT_NAME" -d '{"query":"{ serverInfo { version } }"}')
+          prod=$(printf '%s' "$resp" | jq -r '.data.serverInfo.version // empty')
+          if [ -z "$prod" ]; then echo "could not resolve prod release" >&2; exit 1; fi
+          # The testset is labelled by the prod release it was built for, so its existence is the state:
+          # a testset already under this release means we've already built for it and there's nothing more to do.
+          if gsutil ls "gs://${GCS_BUCKET}/testsets/${TESTSET_API}/${prod}/" >/dev/null 2>&1 && [ "${{ inputs.force }}" != "true" ]; then
+            echo "a testset for prod release $prod already exists; exiting."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "no testset for prod release $prod; will build."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "prod_version=$prod" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve trakpi image
+        id: trakpi
+        if: steps.gate.outputs.changed == 'true'
+        run: |
+          image="${{ inputs.trakpi_image }}"
+          if [ -z "$image" ]; then
+            tag=$(gcloud container images list-tags "$TRAKPI_IMAGE_REPO" --sort-by=~TIMESTAMP --limit=50 --format='value(tags)' | tr ';,' '\n\n' | grep -E '^main\.' | head -1)
+            if [ -z "$tag" ]; then echo "no trakpi-otp tag found in $TRAKPI_IMAGE_REPO" >&2; exit 1; fi
+            image="${TRAKPI_IMAGE_REPO}:${tag}"
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "trakpi image: $image"
+
+      - name: Get GKE credentials
+        if: steps.gate.outputs.changed == 'true'
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GKE_PROJECT }}
+
+      - name: Create the prepare Job
+        if: steps.gate.outputs.changed == 'true'
+        env:
+          TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
+          PROD_VERSION: ${{ steps.gate.outputs.prod_version }}
+        run: |
+          # Fire-and-forget, like the comparison run: the Job builds the testset under the prod release label
+          # (--version). A failed build simply leaves no testset for the release, so the next run retries.
+          echo "prod=$PROD_VERSION image=$TRAKPI_IMAGE"
+          envsubst < deploy/prepare-job.yaml | kubectl create -f -
