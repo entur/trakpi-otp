@@ -29,3 +29,7 @@ results
 # Terraform
 terraform/.terraform
 terraform/.terraform.lock.hcl
+
+# Local testing
+local-testsets
+local-results
