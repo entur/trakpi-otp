@@ -11,7 +11,7 @@ import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 /**
  * Streams each result into a BigQuery table, one row per KPI value. Every row carries the run and
  * request dimensions (`run_id, version, application, run_ts, is_reference_version, reference_version,
- * testset_version, request_id, method, success`) plus the result's implementation-specific
+ * testset_version, origin, label, request_id, method, success`) plus the result's implementation-specific
  * attributes (e.g. `http_status_code`), so each row is self-contained. A request that produced no
  * KPIs — typically a failure — still yields one dimension-only row with null `kpi_name`/`value`.
  * Assumes the table already exists with columns for every dimension and attribute.
@@ -52,6 +52,8 @@ class BigQueryResultsWriter(private val bigQuery: BigQuery, private val tableId:
                     put("is_reference_version", run.isReferenceVersion)
                     run.referenceVersion?.let { put("reference_version", it.value) }
                     put("testset_version", run.testsetVersion.value)
+                    put("origin", run.origin)
+                    run.label?.let { put("label", it) }
                     put("request_id", result.requestId)
                     put("method", result.method)
                     put("success", result.success)

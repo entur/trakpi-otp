@@ -118,6 +118,8 @@ jobs:
           CANDIDATE_VERSION: ${{ steps.candidate.outputs.version }}
           TESTSET: ${{ steps.testset.outputs.version }}
           TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
+          # Scheduled runs are the pure nightly. A manual dispatch is tagged as one-off
+          TRAKPI_RUN_ORIGIN: ${{ github.event_name == 'schedule' && 'nightly' || 'manual' }}
         run: |
           echo "reference=$PROD_VERSION candidate=$CANDIDATE_VERSION testset=$TESTSET image=$TRAKPI_IMAGE app=$APP_PROJECT"
           envsubst < deploy/nightly-job.yaml | kubectl create -f -

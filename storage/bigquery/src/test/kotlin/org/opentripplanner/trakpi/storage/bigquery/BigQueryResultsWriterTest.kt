@@ -47,6 +47,7 @@ class BigQueryResultsWriterTest {
                 "is_reference_version" to false,
                 "reference_version" to "baseline",
                 "testset_version" to "testset-1",
+                "origin" to "local",
                 "request_id" to "request-001",
                 "method" to "trip",
                 "success" to true,
@@ -58,6 +59,28 @@ class BigQueryResultsWriterTest {
             row.content,
         )
         assertEquals("itineraryCount", rows[1].content["kpi_name"])
+    }
+
+    @Test
+    fun `origin and label from the run appear on every row, label only when set`() {
+        val tagged =
+            RunMetadata.create(
+                version = PlannerVersion("dev"),
+                application = "otp",
+                startedAt = Instant.parse("2026-07-08T04:00:00Z"),
+                testsetVersion = TestsetVersion("testset-1"),
+                origin = "manual",
+                label = "dts-ab",
+            )
+
+        val row = BigQueryResultsWriter.toRows(tagged, result(listOf(Kpi("itineraryCount", 5.0)))).first()
+        assertEquals("manual", row.content["origin"])
+        assertEquals("dts-ab", row.content["label"])
+
+        // The default (untagged) run has no label, so the column is omitted rather than written null.
+        val untagged = BigQueryResultsWriter.toRows(run, result(listOf(Kpi("itineraryCount", 5.0)))).first()
+        assertEquals("local", untagged.content["origin"])
+        assertTrue("label" !in untagged.content)
     }
 
     @Test

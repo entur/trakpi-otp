@@ -84,4 +84,7 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Run trakpi test against OTP dev (streams KPIs to BigQuery)
+        # Scheduled runs are the pure nightly. A manual dispatch is tagged as one-off.
+        env:
+          TRAKPI_RUN_ORIGIN: ${{ github.event_name == 'schedule' && 'nightly' || 'manual' }}
         run: java --enable-native-access=ALL-UNNAMED -jar reference/otp/target/trakpi.jar test --version "${{ steps.otp.outputs.version }}" --testset-version "$TRAKPI_TESTSET_VERSION" --reference-version "${{ steps.ref.outputs.version }}"

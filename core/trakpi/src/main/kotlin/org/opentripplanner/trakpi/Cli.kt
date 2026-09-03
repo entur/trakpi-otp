@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.associate
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
@@ -144,6 +145,15 @@ internal class Test<R : TravelPlannerRequest>(
     private val start: Boolean by option("--start", help = "Start the planner before testing").flag()
     private val stopOnCompletion: Boolean by
         option("--stop-on-completion", help = "Stop the planner after testing, even if it fails").flag()
+    private val origin: String by
+        option(
+                "--origin",
+                help = "How this run was triggered, e.g. nightly, manual, local. Labels every result so a dashboard can separate e.g. scheduled from one-off runs",
+                envvar = "TRAKPI_RUN_ORIGIN",
+            )
+            .default("local")
+    private val label: String? by
+        option("--label", help = "Optional tag grouping this run with a named experiment", envvar = "TRAKPI_RUN_LABEL")
 
     // --version identifies the run: it labels every result and keys the archived responses a later run
     // compares against.
@@ -172,6 +182,8 @@ internal class Test<R : TravelPlannerRequest>(
                             startedAt = Instant.now(),
                             referenceVersion = referencePlannerVersion,
                             testsetVersion = testset,
+                            origin = origin,
+                            label = label?.takeIf { it.isNotBlank() },
                         ),
                     requestFileLoader = requestFileLoader,
                     requestLoader = tester.requestLoader,

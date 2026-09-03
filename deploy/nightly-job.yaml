@@ -55,6 +55,8 @@ spec:
             - { name: TRAKPI_BQ_TABLE, value: "${BQ_TABLE}" }
             - { name: TRAKPI_GCS_BUCKET, value: "${GCS_BUCKET}" }
             - { name: GOOGLE_CLOUD_PROJECT, value: "${APP_PROJECT}" }
+            # How the run was triggered (nightly vs manual), so the dashboard can keep scheduled runs pure.
+            - { name: TRAKPI_RUN_ORIGIN, value: "${TRAKPI_RUN_ORIGIN}" }
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
           resources:

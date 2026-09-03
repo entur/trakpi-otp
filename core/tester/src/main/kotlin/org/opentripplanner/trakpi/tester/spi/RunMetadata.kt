@@ -11,8 +11,10 @@ import org.opentripplanner.trakpi.common.TestsetVersion
  *
  * [application] names the planner under test (e.g. "otp"). [referenceVersion] is the version treated
  * as the baseline for comparison, [isReferenceVersion] records whether this run's [version] is that
- * baseline, and [testsetVersion] identifies the request set the run exercised. These describe the run
- * as a whole but are stored on every result so each row is self-contained.
+ * baseline, and [testsetVersion] identifies the request set the run exercised. [origin] records how the
+ * run was triggered (e.g. "nightly", "manual", "local") so a dashboard can separate, e.g. between scheduled runs
+ * and on-off runs, and [label] optionally tags a run as part of a named experiment. These
+ * describe the run as a whole but are stored on every result so each row is self-contained.
  */
 data class RunMetadata(
     val runId: String,
@@ -22,6 +24,8 @@ data class RunMetadata(
     val isReferenceVersion: Boolean,
     val testsetVersion: TestsetVersion,
     val startedAt: Instant,
+    val origin: String,
+    val label: String?,
 ) {
     companion object {
         /** Builds run metadata for [version] started at [startedAt], with a filesystem-safe [runId]. */
@@ -31,6 +35,8 @@ data class RunMetadata(
             startedAt: Instant,
             testsetVersion: TestsetVersion,
             referenceVersion: PlannerVersion? = null,
+            origin: String = "local",
+            label: String? = null,
         ): RunMetadata =
             RunMetadata(
                 runId = "${version.value}_${startedAt.toString().replace(":", "")}",
@@ -40,6 +46,8 @@ data class RunMetadata(
                 isReferenceVersion = referenceVersion != null && version == referenceVersion,
                 testsetVersion = testsetVersion,
                 startedAt = startedAt,
+                origin = origin,
+                label = label,
             )
     }
 }
