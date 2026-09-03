@@ -87,6 +87,9 @@ jobs:
           ON_TAG: ${{ steps.otp.outputs.tag }}
           TRAKPI_IMAGE: ${{ steps.trakpi.outputs.image }}
           TESTSET: ${{ steps.testset.outputs.version }}
+          # Since this is a one-off experiment: tag both passes so the dashboard keeps them out of the nightly view.
+          TRAKPI_RUN_ORIGIN: manual
+          TRAKPI_RUN_LABEL: directtransit-ab
         run: |
           echo "otp=$OFF_TAG testset=$TESTSET image=$TRAKPI_IMAGE app=$APP_PROJECT"
           envsubst < deploy/directtransit-ab-job.yaml | kubectl create -f -
