@@ -28,8 +28,12 @@ data class OtpConfig(
     val imageRepo: String,
     val namespace: String,
     val clientName: String = "entur-trakpi",
-    val podName: String = "trakpi-otp",
-    val serviceName: String = "trakpi-otp",
+    val podName: String = "otp-under-test",
+    // Kubernetes turns the Service name into a `<NAME>_*` env-var prefix it injects into every pod in the
+    // namespace (Docker-style service links). A Service named "trakpi-otp" would collide with trakpi's own
+    // TRAKPI_OTP_* config vars — fatally with TRAKPI_OTP_PORT, which K8s sets to a "tcp://host:port" URL that
+    // then fails to parse as a port. Keep this name off the `trakpi-otp` prefix so the two never overlap.
+    val serviceName: String = "otp-under-test",
     val port: Int = 8080,
     val graphqlPath: String = "/otp/transmodel/v3",
     val baseDir: String = "/otp",
@@ -73,8 +77,8 @@ data class OtpConfig(
                 imageRepo = repo,
                 namespace = env("TRAKPI_OTP_NAMESPACE") ?: defaultNamespace,
                 clientName = env("TRAKPI_OTP_CLIENT_NAME") ?: "entur-trakpi",
-                podName = env("TRAKPI_OTP_POD_NAME") ?: "trakpi-otp",
-                serviceName = env("TRAKPI_OTP_SERVICE_NAME") ?: "trakpi-otp",
+                podName = env("TRAKPI_OTP_POD_NAME") ?: "otp-under-test",
+                serviceName = env("TRAKPI_OTP_SERVICE_NAME") ?: "otp-under-test",
                 port = env("TRAKPI_OTP_PORT")?.toInt() ?: 8080,
                 graphqlPath = env("TRAKPI_OTP_GRAPHQL_PATH") ?: "/otp/transmodel/v3",
                 baseDir = env("TRAKPI_OTP_BASE_DIR") ?: "/otp",
