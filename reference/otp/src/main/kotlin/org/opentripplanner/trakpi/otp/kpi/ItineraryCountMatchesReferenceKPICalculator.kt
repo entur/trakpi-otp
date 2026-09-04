@@ -2,7 +2,6 @@ package org.opentripplanner.trakpi.otp.kpi
 
 import org.opentripplanner.trakpi.otp.tripObject
 import org.opentripplanner.trakpi.otp.tripPatterns
-import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
@@ -11,7 +10,9 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
  * (trip patterns) as the reference response, 0.0 when it differs. Null when either response is not a
  * `trip` routing response, so the KPI is emitted only where the comparison is meaningful.
  */
-class ItineraryCountMatchesReferenceKPICalculator : ComparativeKPICalculator {
+class ItineraryCountMatchesReferenceKPICalculator : OtpComparativeKPICalculator {
+    override val requiredFields = RequiredFields(setOf("trip"), "{ tripPatterns { __typename } }")
+
     override fun calculate(subject: TravelPlannerResponse, reference: TravelPlannerResponse): Kpi? {
         subject.tripObject() ?: return null
         reference.tripObject() ?: return null

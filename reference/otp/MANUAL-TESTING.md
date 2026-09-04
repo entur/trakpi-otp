@@ -42,7 +42,6 @@ GOOGLE_CLOUD_PROJECT=ent-trakpiotp-tst TRAKPI_REQUESTS_ENV=prd TRAKPI_REQUESTS_S
 
 ### Version A
 
-Start the OTP pod. Note: we set the name to `trakpi-otp-manual`. This name must not collide with other running pods in the cluster.
 Fill out `<otp-docker-repo>` with the repo containing the images and `<version-a>` with the otp version to test (e.g. v2.0.0-entur-180).
 ```
 TRAKPI_OTP_IMAGE_REPO=<otp-docker-repo> TRAKPI_OTP_NAMESPACE=trakpiotp TRAKPI_OTP_POD_NAME=trakpi-otp-manual TRAKPI_OTP_SERVICE_NAME=trakpi-otp-manual TRAKPI_OTP_MEMORY=24000Mi TRAKPI_OTP_EPHEMERAL_STORAGE=30Gi TRAKPI_OTP_READINESS_TIMEOUT_SECONDS=5400 reference/otp/trakpi start --version <version-a>

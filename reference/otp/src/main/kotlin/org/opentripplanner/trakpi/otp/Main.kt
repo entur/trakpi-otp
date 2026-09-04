@@ -4,6 +4,7 @@ import java.nio.file.Path
 import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.ItinerariesMatchReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
@@ -38,7 +39,7 @@ private const val OTP_DEV_ENDPOINT = "https://api.dev.entur.io/journey-planner/v
 // raw request/response is additionally archived to that bucket so later runs can compare against it.
 fun main(args: Array<String>) {
     // The KPIs drive both scoring and which fields the testset must request, so they are declared once
-    // and shared: adding a KPI here is enough to pull the fields it reads into prepared requests.
+    // and shared: adding a KPI here is enough to pull the fields it requires into prepared requests.
     val kpiCalculators =
         listOf(
             ItineraryCountKPICalculator(),
@@ -46,6 +47,13 @@ fun main(args: Array<String>) {
             FastestItineraryKPICalculator(),
             MinTransfersKPICalculator(),
             DepartureCountKPICalculator(),
+        )
+    // Comparative KPIs score a subject against the reference run's response for the same request.
+    // Declaring a comparative KPI here also pulls in the required fields into prepared results.
+    val comparativeKpiCalculators =
+        listOf(
+            ItineraryCountMatchesReferenceKPICalculator(),
+            ItinerariesMatchReferenceKPICalculator(),
         )
     // When TRAKPI_OTP_IMAGE_REPO is set, start/stop manage an in-cluster OTP pod and test targets it;
     // otherwise orchestration is off and test uses OTP_ENDPOINT, falling back to the dev API.
@@ -61,7 +69,7 @@ fun main(args: Array<String>) {
                 travelPlanner = OTPTravelPlanner(endpoint, clientName = "entur-trakpi-dev"),
                 kpiCalculators = kpiCalculators,
                 resultsWriter = resultsWriter(),
-                comparativeKpiCalculators = listOf(ItineraryCountMatchesReferenceKPICalculator()),
+                comparativeKpiCalculators = comparativeKpiCalculators,
                 resultsReader = resultsReader(),
                 requestFileLoader = requestFileLoader(),
             ),
@@ -73,7 +81,7 @@ fun main(args: Array<String>) {
                 transforms =
                     listOf(
                         ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
-                        EnsureKpiFields(kpiCalculators),
+                        EnsureKpiFields(kpiCalculators + comparativeKpiCalculators),
                     ),
                 store = testsetStore(),
             ),
