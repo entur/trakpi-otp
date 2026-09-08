@@ -6,6 +6,7 @@ import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItinerariesMatchReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalculator
+import org.opentripplanner.trakpi.otp.drill.OtpDrillDownRenderer
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
@@ -16,6 +17,7 @@ import org.opentripplanner.trakpi.TesterConfig
 import org.opentripplanner.trakpi.TestsetConfig
 import org.opentripplanner.trakpi.runTrakpi
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
+import org.opentripplanner.trakpi.storage.bigquery.BigQueryRunReader
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryTestsetSource
 import org.opentripplanner.trakpi.storage.bigquery.RequestEnvironment
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
@@ -27,6 +29,7 @@ import org.opentripplanner.trakpi.storage.gcs.GcsTestsetStore
 import org.opentripplanner.trakpi.tester.FanOutResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
+import org.opentripplanner.trakpi.tester.spi.RunReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.testset.TestsetSource
 import org.opentripplanner.trakpi.testset.TestsetStore
@@ -72,6 +75,8 @@ fun main(args: Array<String>) {
                 comparativeKpiCalculators = comparativeKpiCalculators,
                 resultsReader = resultsReader(),
                 requestFileLoader = requestFileLoader(),
+                runReader = runReader(),
+                drillDownRenderer = OtpDrillDownRenderer(),
             ),
         testset =
             TestsetConfig(
@@ -85,6 +90,16 @@ fun main(args: Array<String>) {
                     ),
                 store = testsetStore(),
             ),
+    )
+}
+
+/** Reads run-level data from BigQuery when TRAKPI_BQ_PROJECT is set, otherwise null. */
+private fun runReader(): RunReader? {
+    val bqProject = System.getenv("TRAKPI_BQ_PROJECT") ?: return null
+    return BigQueryRunReader.create(
+        projectId = bqProject,
+        dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
+        table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
     )
 }
 

@@ -5,6 +5,7 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.associate
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
@@ -14,7 +15,9 @@ import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
@@ -28,17 +31,23 @@ import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
 import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.testset.RequestTransform
+import org.opentripplanner.trakpi.tester.spi.DrillDownRenderer
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunReader
+import org.opentripplanner.trakpi.tester.spi.RunRef
 import org.opentripplanner.trakpi.testset.TestsetSource
 import org.opentripplanner.trakpi.testset.TestsetStore
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
- * The runtime side of a planner integration: what the `test` command needs to run a planner build and
- * score its responses. (The `start`/`stop` lifecycle commands need no configuration.)
+ * The runtime side of a planner integration: what the `test` and `drill` commands need to run a planner
+ * build, score its responses, and drill down into one. (The `start`/`stop` lifecycle commands need no
+ * configuration.) [runReader] and [drillDownRenderer] back `drill`: the former reads which runs exercised a
+ * request, the latter renders one run's response comparison (both are planner-agnostic to the command —
+ * only [drillDownRenderer]'s output is planner-specific).
  */
 class TesterConfig<R : TravelPlannerRequest>(
     val requestLoader: RequestLoader<R>,
@@ -48,6 +57,8 @@ class TesterConfig<R : TravelPlannerRequest>(
     val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
     val resultsReader: ResultsReader? = null,
     val requestFileLoader: RequestFileLoader? = null,
+    val runReader: RunReader? = null,
+    val drillDownRenderer: DrillDownRenderer? = null,
 )
 
 /**
@@ -65,7 +76,7 @@ class TestsetConfig<T>(
 
 /**
  * Runs the trakpi command-line interface. Every command is always present so `trakpi` documents itself:
- * `start`/`stop` need no configuration, while `test` and the `testset` commands explain when
+ * `start`/`stop` need no configuration, while `test`, `drill` and the `testset` commands explain when
  * their [tester]/[testset] is not configured. A planner integration supplies whichever side(s) it
  * supports — the OTP one supplies both.
  */
@@ -81,6 +92,7 @@ fun <R : TravelPlannerRequest, T> runTrakpi(
             Start(orchestrator),
             Stop(orchestrator),
             Test(application, tester, orchestrator),
+            Drill(tester),
             Testset().subcommands(Testset.List(testset), Testset.Prepare(testset)),
         )
     Trakpi().subcommands(commands).main(args)
@@ -206,6 +218,95 @@ internal class Test<R : TravelPlannerRequest>(
         } catch (e: IllegalArgumentException) {
             throw UsageError(e.message ?: "Invalid configuration")
         }
+}
+
+/**
+ * Drills down into a single request. With no run, it prints the every run that exercised the
+ * request and the KPIs it recorded. With `--run` (or an explicit `--version`/`--reference-version`/`--testset-version`
+ * triple), it drills down to one run's comparison output and renders the candidate-vs-reference responses via the
+ * planner's [DrillDownRenderer].
+ */
+internal class Drill(private val tester: TesterConfig<*>?) : CliktCommand(name = "drill") {
+    override fun help(context: Context) =
+        "Drill down into a request: the runs that exercised it, or one run's response comparison."
+
+    private val requestId: String by argument(help = "The request's external correlation id")
+    private val run: String? by option("--run", help = "Drill down to a single run's comparison output for this request")
+    private val versionOpt: String? by
+        option("--version", help = "Candidate build version, to drill down without a run lookup (needs --testset-version)")
+    private val referenceVersionOpt: String? by option("--reference-version", help = "Reference build version for the drill-down")
+    private val testsetOpt: String? by option("--testset-version", help = "Testset version for the drill-down")
+
+    override fun run() {
+        val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
+        if (run != null || versionOpt != null || referenceVersionOpt != null || testsetOpt != null) drillDownIntoRun(tester)
+        else printRunVector(tester)
+    }
+
+    private fun printRunVector(tester: TesterConfig<*>) {
+        val reader = tester.runReader ?: throw UsageError("The run vector needs a run store; set TRAKPI_BQ_PROJECT.")
+        val runs = reader.runsForRequest(requestId)
+        if (runs.isEmpty()) {
+            println("No runs recorded for request $requestId.")
+            return
+        }
+        println("Runs for request $requestId (newest first):")
+        println()
+        for ((runRef, kpis) in runs) {
+            println("  ${localTime(runRef.runTs)}   version ${runRef.version}   reference ${runRef.referenceVersion ?: "-"}   testset ${runRef.testsetVersion}")
+            println("      run-id: ${runRef.runId}")
+            val kpiLine = kpis.entries.sortedBy { it.key }.joinToString("   ") { (name, value) -> "$name=${formatKpi(value)}" }
+            if (kpiLine.isNotEmpty()) println("      $kpiLine")
+            println()
+        }
+        println("Drill down to one run with:  drill $requestId --run <run-id>")
+    }
+
+    private fun drillDownIntoRun(tester: TesterConfig<*>) {
+        val reader = tester.resultsReader ?: throw UsageError("The response comparison needs the archive; set TRAKPI_GCS_BUCKET.")
+        val renderer = tester.drillDownRenderer ?: throw UsageError("This planner does not support drilling down into responses.")
+        val runRef = resolveRun(tester)
+        val testset = TestsetVersion(runRef.testsetVersion)
+        val candidate =
+            reader.response(PlannerVersion(runRef.version), testset, requestId)
+                ?: throw UsageError("No archived response for version ${runRef.version}, testset ${runRef.testsetVersion}, request $requestId.")
+        val reference = runRef.referenceVersion?.let { reader.response(PlannerVersion(it), testset, requestId) }
+        println("Request $requestId")
+        println("Run ${localTime(runRef.runTs)}   candidate ${runRef.version}   reference ${runRef.referenceVersion ?: "(none)"}   testset ${runRef.testsetVersion}")
+        println()
+        renderer.render(candidate, reference).forEach(::println)
+    }
+
+    /**
+     * The run to drill down into: from an explicit `--version`/`--reference-version`/`--testset-version`
+     * triple, or by resolving a `--run` id through the run store.
+     */
+    private fun resolveRun(tester: TesterConfig<*>): RunRef {
+        if (versionOpt != null || referenceVersionOpt != null || testsetOpt != null) {
+            val version = versionOpt ?: throw UsageError("--version is required when drilling down without --run.")
+            val testset = testsetOpt ?: throw UsageError("--testset-version is required when drilling down without --run.")
+            return RunRef("$version@$testset", "(given)", version, referenceVersionOpt, testset)
+        }
+        val runId = run!!
+        val reader =
+            tester.runReader
+                ?: throw UsageError("Resolving --run needs a run store; set TRAKPI_BQ_PROJECT, or pass --version/--reference-version/--testset-version.")
+        return reader.resolveRun(runId) ?: throw UsageError("No run found with id $runId.")
+    }
+
+    private fun formatKpi(value: Double): String = if (value == value.toLong().toDouble()) value.toLong().toString() else value.toString()
+
+    /**
+     * Formats a [RunRef.runTs] UTC instant in the user's own time zone (from the environment via
+     * [ZoneId.systemDefault]). Non-instant values (e.g. the "(given)" placeholder of a manual drill-down) are
+     * passed through unchanged.
+     */
+    private fun localTime(runTs: String): String =
+        runCatching { Instant.parse(runTs).atZone(ZoneId.systemDefault()).format(LOCAL_TIME) }.getOrDefault(runTs)
+
+    private companion object {
+        private val LOCAL_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm z")
+    }
 }
 
 internal class Testset : CliktCommand(name = "testset") {

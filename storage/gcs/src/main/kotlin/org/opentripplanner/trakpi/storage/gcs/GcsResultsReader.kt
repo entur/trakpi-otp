@@ -1,5 +1,6 @@
 package org.opentripplanner.trakpi.storage.gcs
 
+import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
 import org.opentripplanner.trakpi.common.PlannerVersion
@@ -23,6 +24,12 @@ class GcsResultsReader(private val storage: Storage, private val bucket: String)
             byRequest[requestId] = ResponseJson.parse(String(blob.getContent()))
         }
         return byRequest
+    }
+
+    override fun response(version: PlannerVersion, testsetVersion: TestsetVersion, requestId: String): TravelPlannerResponse? {
+        val name = GcsResultsWriter.resultsPrefix(testsetVersion.value, version.value) + requestId
+        val blob = storage.get(BlobId.of(bucket, name)) ?: return null
+        return ResponseJson.parse(String(blob.getContent()))
     }
 
     companion object {

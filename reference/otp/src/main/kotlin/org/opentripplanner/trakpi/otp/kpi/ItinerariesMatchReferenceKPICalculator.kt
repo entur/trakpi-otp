@@ -1,10 +1,5 @@
 package org.opentripplanner.trakpi.otp.kpi
 
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.otp.tripObject
 import org.opentripplanner.trakpi.otp.tripPatterns
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
@@ -29,26 +24,7 @@ class ItinerariesMatchReferenceKPICalculator : OtpComparativeKPICalculator {
     override fun calculate(subject: TravelPlannerResponse, reference: TravelPlannerResponse): Kpi? {
         subject.tripObject() ?: return null
         reference.tripObject() ?: return null
-        val matches = subject.tripPatterns().map(::fingerprint) == reference.tripPatterns().map(::fingerprint)
+        val matches = subject.tripPatterns().map(::itineraryFingerprint) == reference.tripPatterns().map(::itineraryFingerprint)
         return Kpi("itinerariesMatchReference", if (matches) 1.0 else 0.0)
-    }
-
-    /** An itinerary's identity: the ordered fingerprints of its legs. */
-    private fun fingerprint(pattern: JsonObject): List<String> =
-        (pattern["legs"] as? JsonArray).orEmpty().map { leg -> legFingerprint(leg.jsonObject) }
-
-    private fun legFingerprint(leg: JsonObject): String {
-        fun field(key: String) = leg[key]?.jsonPrimitive?.contentOrNull ?: ""
-        fun nested(obj: String, key: String) = (leg[obj] as? JsonObject)?.get(key)?.jsonPrimitive?.contentOrNull ?: ""
-        return listOf(
-                field("mode"),
-                nested("serviceJourney", "id"),
-                nested("line", "publicCode"),
-                nested("fromPlace", "name"),
-                nested("toPlace", "name"),
-                field("aimedStartTime"),
-                field("aimedEndTime"),
-            )
-            .joinToString("|")
     }
 }

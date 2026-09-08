@@ -12,4 +12,10 @@ interface ResultsReader {
      * Returns an empty map when none are stored for the [version]/[testsetVersion] pair.
      */
     fun responses(version: PlannerVersion, testsetVersion: TestsetVersion): Map<String, TravelPlannerResponse>
+
+    /**
+     * The single archived response of [version] for [testsetVersion] and [requestId], or null when none
+     * is stored.
+     */
+    fun response(version: PlannerVersion, testsetVersion: TestsetVersion, requestId: String): TravelPlannerResponse?
 }
