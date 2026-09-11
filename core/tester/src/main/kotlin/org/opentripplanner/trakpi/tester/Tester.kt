@@ -38,26 +38,30 @@ class Tester<R : TravelPlannerRequest>(
                 resultsReader.responses(referenceVersion, run.testsetVersion)
             else emptyMap()
         files.forEachIndexed { index, file ->
-            val request = requestLoader.load(file)
-            val response = travelPlanner.execute(request)
-            val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
-            val referenceResponse = reference[file.id]
-            val comparativeKpis =
-                if (referenceResponse != null) comparativeKpiCalculators.mapNotNull { it.calculate(response, referenceResponse) }
-                else emptyList()
-            val allKpis = kpis + comparativeKpis
-            resultsWriter.store(
-                run,
-                TestCaseResult(
-                    requestId = file.id,
-                    request = file.body,
-                    method = response.method,
-                    success = response.success,
-                    rawResponse = response.raw,
-                    attributes = response.attributes,
-                    kpis = allKpis,
-                ),
-            )
+            try {
+                val request = requestLoader.load(file)
+                val response = travelPlanner.execute(request)
+                val kpis = kpiCalculators.mapNotNull { it.calculate(response) }
+                val referenceResponse = reference[file.id]
+                val comparativeKpis =
+                    if (referenceResponse != null) comparativeKpiCalculators.mapNotNull { it.calculate(response, referenceResponse) }
+                    else emptyList()
+                val allKpis = kpis + comparativeKpis
+                resultsWriter.store(
+                    run,
+                    TestCaseResult(
+                        requestId = file.id,
+                        request = file.body,
+                        method = response.method,
+                        success = response.success,
+                        rawResponse = response.raw,
+                        attributes = response.attributes,
+                        kpis = allKpis,
+                    ),
+                )
+            } catch (e: Exception) {
+                System.err.println("WARNING: request ${file.id} failed (${e.javaClass.simpleName}: ${e.message?.take(150)})")
+            }
             progress.tryReportProgress(itemsProcessed = index + 1)
         }
     }
