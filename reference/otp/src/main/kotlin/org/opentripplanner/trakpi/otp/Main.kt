@@ -79,17 +79,21 @@ fun main(args: Array<String>) {
                 drillDownRenderer = OtpDrillDownRenderer(),
             ),
         testset =
-            TestsetConfig(
-                api = "transmodel",
-                source = testsetSource(),
-                codec = OtpRequestCodec,
-                transforms =
-                    listOf(
-                        ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
-                        EnsureKpiFields(kpiCalculators + comparativeKpiCalculators),
-                    ),
-                store = testsetStore(),
-            ),
+            run {
+                val sampleSize = System.getenv("TRAKPI_REQUESTS_SAMPLE_SIZE")?.toInt() ?: 1000
+                TestsetConfig(
+                    api = "transmodel",
+                    source = testsetSource(sampleSize),
+                    codec = OtpRequestCodec,
+                    transforms =
+                        listOf(
+                            ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
+                            EnsureKpiFields(kpiCalculators + comparativeKpiCalculators),
+                        ),
+                    store = testsetStore(),
+                    targetSize = sampleSize,
+                )
+            },
     )
 }
 
@@ -103,14 +107,11 @@ private fun runReader(): RunReader? {
     )
 }
 
-/**
- * The source of raw requests for `testset prepare`
- */
-private fun testsetSource(): TestsetSource? {
+private fun testsetSource(sampleSize: Int): TestsetSource? {
     val environment = System.getenv("TRAKPI_REQUESTS_ENV") ?: return null
     return BigQueryTestsetSource.create(
         environment = RequestEnvironment.valueOf(environment.uppercase()),
-        sampleSize = System.getenv("TRAKPI_REQUESTS_SAMPLE_SIZE")?.toInt() ?: 1000,
+        sampleSize = sampleSize,
     )
 }
 

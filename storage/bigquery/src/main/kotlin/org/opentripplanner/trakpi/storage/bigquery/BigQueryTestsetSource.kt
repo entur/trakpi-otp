@@ -27,9 +27,12 @@ enum class RequestEnvironment(val requestLogTable: String) {
 class BigQueryTestsetSource(private val bigQuery: BigQuery, private val requestLogTable: String, private val sampleSize: Int) :
     TestsetSource {
     override fun load(): List<Request> {
+        // Fetch slightly more than sampleSize so downstream consumers have headroom if some requests are
+        // discarded (e.g. unparseable bodies).
+        val fetchSize = sampleSize + maxOf(sampleSize / 10, 10)
         val config =
             QueryJobConfiguration.newBuilder(query(requestLogTable))
-                .addNamedParameter("limit", QueryParameterValue.int64(sampleSize.toLong()))
+                .addNamedParameter("limit", QueryParameterValue.int64(fetchSize.toLong()))
                 .build()
         return bigQuery.query(config).iterateAll().map { row -> Request(id = row.get("id").stringValue, body = row.get("body").stringValue) }
     }

@@ -72,6 +72,8 @@ class TestsetConfig<T>(
     val codec: RequestCodec<T>? = null,
     val transforms: List<RequestTransform<T>> = emptyList(),
     val store: TestsetStore? = null,
+    /** Desired number of requests in the prepared testset; the builder stops at this count. */
+    val targetSize: Int? = null,
 )
 
 /**
@@ -343,7 +345,7 @@ internal class Testset : CliktCommand(name = "testset") {
                 } catch (e: IllegalArgumentException) {
                     throw UsageError(e.message ?: "Invalid version")
                 }
-            val testset = TestsetBuilder(source, codec, config.transforms, store).prepare(config.api, testsetVersion)
+            val testset = TestsetBuilder(source, codec, config.transforms, store, config.targetSize).prepare(config.api, testsetVersion)
             echo("Prepared testset ${testset.api}/${testset.version}: ${testset.requests.size} request(s).")
         }
     }
