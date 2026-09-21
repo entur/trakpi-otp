@@ -77,10 +77,7 @@ class TestsetConfig<T>(
 )
 
 /**
- * Runs the trakpi command-line interface. Every command is always present so `trakpi` documents itself:
- * `start`/`stop` need no configuration, while `test`, `drill` and the `testset` commands explain when
- * their [tester]/[testset] is not configured. A planner integration supplies whichever side(s) it
- * supports — the OTP one supplies both.
+ * Runs the trakpi command-line interface.
  */
 fun <R : TravelPlannerRequest, T> runTrakpi(
     args: Array<String>,
