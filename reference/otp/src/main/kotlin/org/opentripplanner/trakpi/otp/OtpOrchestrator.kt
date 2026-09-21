@@ -3,6 +3,7 @@ package org.opentripplanner.trakpi.otp
 import java.time.Instant
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.orchestrator.PlannerOrchestrator
+import org.opentripplanner.trakpi.orchestrator.PlannerStatus
 
 /**
  * Runs the OTP version under test in Kubernetes: `start` builds the graph and serves it, `stop` tears it
@@ -26,6 +27,16 @@ class OtpOrchestrator(private val cluster: OtpCluster, private val config: OtpCo
     override fun stop(version: PlannerVersion) {
         log("Stopping OTP (pod ${config.podName})")
         cluster.teardown()
+    }
+
+    override fun status(version: PlannerVersion): PlannerStatus {
+        val status = cluster.probeStatus()
+        return when {
+            !status.present -> PlannerStatus.NOT_RUNNING
+            status.failure != null -> PlannerStatus.FAILED
+            status.ready -> PlannerStatus.READY
+            else -> PlannerStatus.STARTING
+        }
     }
 
     /** Polls until the instance reports serving */
