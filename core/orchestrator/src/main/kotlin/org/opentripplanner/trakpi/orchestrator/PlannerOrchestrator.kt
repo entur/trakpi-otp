@@ -7,6 +7,14 @@ import org.opentripplanner.trakpi.common.PlannerVersion
  */
 interface PlannerOrchestrator {
     /**
+     * Prepare planner [version] for serving, including e.g. building the planner from source, fetching and
+     * preprocessing timetable data, and converting it to a format the planner can serve (akin to what OTP's graph
+     * build does). [args] is opaque and trakpi passes it through untouched to let the implementation interpret it.
+     * May be null when the caller supplies no arguments.
+     */
+    fun prepare(version: PlannerVersion, args: String?) {}
+
+    /**
      * Start planner [version]. [args] is opaque and trakpi passes it through untouched to let the
      * implementation interpret it. May be null when the caller supplies no arguments.
      */
