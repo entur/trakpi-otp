@@ -20,6 +20,7 @@ import org.opentripplanner.trakpi.storage.bigquery.BigQueryResultsWriter
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryRunReader
 import org.opentripplanner.trakpi.storage.bigquery.BigQueryTestsetSource
 import org.opentripplanner.trakpi.storage.bigquery.RequestEnvironment
+import org.opentripplanner.trakpi.storage.file.FileResultsReader
 import org.opentripplanner.trakpi.storage.file.FileResultsWriter
 import org.opentripplanner.trakpi.storage.file.FileTestsetStore
 import org.opentripplanner.trakpi.storage.gcs.GcsRequestFileLoader
@@ -130,9 +131,10 @@ private fun testsetStore(): TestsetStore {
     return FileTestsetStore(Path.of(System.getenv("TRAKPI_TESTSET_DIR") ?: "testsets"))
 }
 
-private fun resultsReader(): ResultsReader? {
-    val bucket = System.getenv("TRAKPI_GCS_BUCKET") ?: return null
-    return GcsResultsReader.create(bucket)
+/** Reads archived responses for `compare`/`drill`: from GCS when TRAKPI_GCS_BUCKET is set, otherwise from local result files. */
+private fun resultsReader(): ResultsReader {
+    System.getenv("TRAKPI_GCS_BUCKET")?.let { return GcsResultsReader.create(it) }
+    return FileResultsReader(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results"))
 }
 
 private fun resultsWriter(): ResultsWriter {
