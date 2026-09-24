@@ -70,4 +70,53 @@ class FileResultsWriterTest {
             obj["rawResponse"]!!.jsonPrimitive.content,
         )
     }
+
+    @Test
+    fun `merges KPIs into an existing result rather than overwriting it`() {
+        val dir = Files.createTempDirectory("results")
+        val storage = FileResultsWriter(dir)
+        val run =
+            RunMetadata.create(
+                version = PlannerVersion("dev"),
+                application = "otp",
+                startedAt = Instant.parse("2026-06-23T04:00:00Z"),
+                testsetVersion = TestsetVersion("testset-1"),
+            )
+
+        // The test pass writes the per-run KPIs, request and response.
+        storage.store(
+            run,
+            TestCaseResult(
+                requestId = "request-1",
+                request = """{"query":"..."}""",
+                method = "trip",
+                success = true,
+                rawResponse = """{"data":{"trip":{}}}""",
+                attributes = mapOf("http_status_code" to "200"),
+                kpis = listOf(Kpi("itineraryCount", 5.0)),
+            ),
+        )
+        // A second pass (compare) adds a comparative KPI with no request body of its own.
+        storage.store(
+            run,
+            TestCaseResult(
+                requestId = "request-1",
+                request = "",
+                method = "trip",
+                success = true,
+                rawResponse = "",
+                attributes = emptyMap(),
+                kpis = listOf(Kpi("itinerariesMatchReference", 0.0)),
+            ),
+        )
+
+        val obj = Json.parseToJsonElement(dir.resolve(run.runId).resolve("request-1.json").readText()).jsonObject
+        // Both KPIs are present.
+        assertEquals(5.0, obj["kpis"]!!.jsonObject["itineraryCount"]!!.jsonPrimitive.double)
+        assertEquals(0.0, obj["kpis"]!!.jsonObject["itinerariesMatchReference"]!!.jsonPrimitive.double)
+        // The original request and response are kept, not overwritten by the empty ones.
+        assertEquals("""{"query":"..."}""", obj["request"]!!.jsonPrimitive.content)
+        assertEquals("""{"data":{"trip":{}}}""", obj["rawResponse"]!!.jsonPrimitive.content)
+        assertEquals("200", obj["attributes"]!!.jsonObject["http_status_code"]!!.jsonPrimitive.content)
+    }
 }
