@@ -1,8 +1,11 @@
-# One trakpi-test pod runs two scoring passes: the reference run (prod) as an init container, which archives
-# its responses, then the candidate run (newest dev) as the main container, which compares against them.
-# Each pass is a single `trakpi test --start --stop-on-completion`, so it brings its own OTP pod up and tears
-# it down. POD_NAME/POD_UID (downward API) let OtpOrchestrator set the OTP pod's ownerReference to this pod,
-# so Kubernetes garbage-collects a leaked OTP pod if this pod is killed.
+# One trakpi-test pod runs three phases: the reference run (prod) and the candidate run (newest dev) as
+# init containers — each brings its own OTP pod up, tests, tears it down, and archives its responses —
+# then a compare pass as the main container, which scores the candidate against the reference from the
+# archived responses (no OTP pod needed). The candidate test and the compare share a --run-id
+# ($(POD_NAME), identical across containers in the pod) so the comparative KPIs land on the candidate run.
+# Each test pass is a single `trakpi test --start --stop-on-completion`. POD_NAME/POD_UID (downward API)
+# let OtpOrchestrator set the OTP pod's ownerReference to this pod, so Kubernetes garbage-collects a
+# leaked OTP pod if this pod is killed.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -12,7 +15,7 @@ metadata:
     app: trakpi-test
 spec:
   backoffLimit: 0 # a failed run is a failed run; don't silently retry
-  activeDeadlineSeconds: 14400 # 4h cap (two graph builds + two scoring passes)
+  activeDeadlineSeconds: 14400 # 4h cap (two graph builds + two scoring passes + compare)
   ttlSecondsAfterFinished: 86400 # let Kubernetes clean the finished Job up after a day
   template:
     metadata:
@@ -62,10 +65,22 @@ spec:
           resources:
             requests: { cpu: "500m", memory: "1Gi" }
             limits: { memory: "1Gi" }
-      containers:
+        # The candidate test archives its own responses; --reference-version only labels the run, and
+        # --run-id ties it to the compare pass below. No in-run comparison happens here.
         - name: candidate
           image: ${TRAKPI_IMAGE}
-          args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion", "--run-id", "$(POD_NAME)"]
+          securityContext: *secctx
+          env: *runenv
+          resources:
+            requests: { cpu: "500m", memory: "1Gi" }
+            limits: { memory: "1Gi" }
+      containers:
+        # Second pass: read the candidate's and reference's archived responses and write the comparative
+        # KPIs under the candidate's run id. No OTP pod, so this stays small.
+        - name: compare
+          image: ${TRAKPI_IMAGE}
+          args: ["compare", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--run-id", "$(POD_NAME)"]
           securityContext: *secctx
           env: *runenv
           resources:
