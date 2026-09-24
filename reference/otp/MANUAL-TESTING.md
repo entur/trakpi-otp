@@ -62,9 +62,10 @@ Confirm OTP is serving and the port-forward worked.
 curl -s -X POST http://localhost:8080/otp/transmodel/v3 -H 'Content-Type: application/json' -H 'ET-Client-Name: entur-trakpi-dev' -d '{"query":"{ serverInfo { version } }"}'
 ```
 
-Run the test. Results are stored in `./results-a`.
+Run the test. Results are stored under `./results/a` (both versions share one `./results` dir, each in
+its own `--run-id` subdirectory, so `compare` can read them back).
 ```
-OTP_ENDPOINT=http://localhost:8080/otp/transmodel/v3 TRAKPI_RESULTS_DIR=./results-a reference/otp/trakpi test --version <version-a> --testset-version dts-test --set requests.dir=./local-testsets/transmodel/dts-test
+OTP_ENDPOINT=http://localhost:8080/otp/transmodel/v3 TRAKPI_RESULTS_DIR=./results reference/otp/trakpi test --version <version-a> --run-id a --testset-version dts-test --set requests.dir=./local-testsets/transmodel/dts-test
 ```
 
 ### Version B
@@ -86,27 +87,28 @@ Confirm OTP is serving and the port-forward worked.
 ```
 curl -s -X POST http://localhost:8081/otp/transmodel/v3 -H 'Content-Type: application/json' -H 'ET-Client-Name: entur-trakpi-dev' -d '{"query":"{ serverInfo { version } }"}'
 ```
-Run the test. Results are stored in `./results-b`.
+Run the test. Results are stored under `./results/b`.
 ```
-OTP_ENDPOINT=http://localhost:8081/otp/transmodel/v3 TRAKPI_RESULTS_DIR=./results-b reference/otp/trakpi test --version <version-b> --testset-version dts-test --set requests.dir=./local-testsets/transmodel/dts-test
+OTP_ENDPOINT=http://localhost:8081/otp/transmodel/v3 TRAKPI_RESULTS_DIR=./results reference/otp/trakpi test --version <version-b> --run-id b --testset-version dts-test --set requests.dir=./local-testsets/transmodel/dts-test
 ```
 
 ### Compare and analyze
-Test results are stored in json format. To compare and analyze the test results, we use the `jq` "json-query" command line tool.
+Score version B against version A in a second pass. `compare` reads both runs' stored responses from
+`./results` and writes the comparative KPIs (`itineraryCountMatchesReference`,
+`itinerariesMatchReference`) into B's result files under `--run-id b`:
+```
+TRAKPI_RESULTS_DIR=./results reference/otp/trakpi compare --version <version-b> --reference-version <version-a> --testset-version dts-test --run-id b
+```
+`compare` runs offline against the stored responses — the OTP pods don't need to be up for it, so you
+can tear them down first and, if you like, test the two versions one after another rather than side by
+side.
 
-Here are some examples taking version A as a baseline and comparing B against it:
-
-ItineraryCount:
+Then aggregate the comparative KPIs with the `jq` "json-query" tool. For example, how many requests B
+routed identically to A versus differently:
 ```
-find ./results-a -name '*.json' -exec cat {} + | jq -n 'reduce inputs as $r ({}; if $r.kpis.itineraryCount!=null then .[$r.requestId]=$r.kpis.itineraryCount else . end)' > /tmp/a-counts.json
+find ./results/b -name '*.json' -exec cat {} + | jq -n 'reduce inputs as $r ({match:0,differ:0}; ($r.kpis.itinerariesMatchReference) as $m | if $m==1 then .match+=1 elif $m==0 then .differ+=1 else . end)'
 ```
-
-ItineraryCount:
-```
-find ./results-b -name '*.json' -exec cat {} + | jq -n --slurpfile a /tmp/a-counts.json '$a[0] as $base | reduce inputs as $r ({more:0,equal:0,fewer:0,onlyB:0,aTotal:0,bTotal:0}; if $r.kpis.itineraryCount==null then . else ($base[$r.requestId]) as $x | if $x==null then .onlyB+=1 else .bTotal+=$r.kpis.itineraryCount | .aTotal+=$x | (if $r.kpis.itineraryCount>$x then .more+=1 elif $r.kpis.itineraryCount==$x then .equal+=1 else .fewer+=1 end) end end)'
-```
-`more`/`equal`/`fewer`: requests where B returned more/same/fewer itineraries than A.
-`aTotal`/`bTotal`: itinerary totals across shared requests. `onlyB`: requests A has no baseline for.
+`match`/`differ`: requests where B's itineraries matched / differed from A's.
 
 ### Teardown
 
