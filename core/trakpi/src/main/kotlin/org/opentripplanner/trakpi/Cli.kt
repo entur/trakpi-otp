@@ -22,6 +22,7 @@ import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.PlannerOrchestrator
+import org.opentripplanner.trakpi.tester.Comparator
 import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
 import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
@@ -43,9 +44,11 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
- * The runtime side of a planner integration: what the `test` and `drill` commands need to run a planner
- * build, score its responses, and drill down into one. (The `start`/`stop` lifecycle commands need no
- * configuration.) [runReader] and [drillDownRenderer] back `drill`: the former reads which runs exercised a
+ * The runtime side of a planner integration: what the `test`, `compare` and `drill` commands need to run
+ * a planner build, score its responses, compare two runs, and drill down into one. (The `start`/`stop`
+ * lifecycle commands need no configuration.) [comparativeKpiCalculators] and [resultsReader] back
+ * `compare`: it reads each run's archived responses and scores the candidate against a reference in a
+ * second pass. [runReader] and [drillDownRenderer] back `drill`: the former reads which runs exercised a
  * request, the latter renders one run's response comparison (both are planner-agnostic to the command —
  * only [drillDownRenderer]'s output is planner-specific).
  */
@@ -91,6 +94,7 @@ fun <R : TravelPlannerRequest, T> runTrakpi(
             Start(orchestrator),
             Stop(orchestrator),
             Test(application, tester, orchestrator),
+            Compare(application, tester),
             Drill(tester),
             Testset().subcommands(Testset.List(testset), Testset.Prepare(testset)),
         )
@@ -150,7 +154,9 @@ internal class Test<R : TravelPlannerRequest>(
     private val commandLineOverrides: Map<String, String> by
         option("--set", help = "Override a config value, e.g. --set requests.dir=<path> (repeatable)").associate()
     private val referenceVersion: String? by
-        option("--reference-version", help = "Baseline version to compare against")
+        option("--reference-version", help = "Baseline this run is scored against; recorded on the run so a later `compare` pass and the dashboard can pair them")
+    private val runId: String? by
+        option("--run-id", help = "Explicit run id; defaults to <version>_<start time>. Pass the same id to a later `compare` so its comparative KPIs land on this run")
     private val testsetVersion: String by
         option("--testset-version", help = "Label of the request set being exercised").required()
     private val start: Boolean by option("--start", help = "Start the planner before testing").flag()
@@ -195,15 +201,13 @@ internal class Test<R : TravelPlannerRequest>(
                             testsetVersion = testset,
                             origin = origin,
                             label = label?.takeIf { it.isNotBlank() },
+                            runId = runId?.takeIf { it.isNotBlank() },
                         ),
                     requestFileLoader = requestFileLoader,
                     requestLoader = tester.requestLoader,
                     travelPlanner = tester.travelPlanner,
                     kpiCalculators = tester.kpiCalculators,
                     resultsWriter = tester.resultsWriter,
-                    comparativeKpiCalculators = tester.comparativeKpiCalculators,
-                    resultsReader = tester.resultsReader,
-                    referenceVersion = referencePlannerVersion,
                 )
                 .run()
         } finally {
@@ -217,6 +221,61 @@ internal class Test<R : TravelPlannerRequest>(
         } catch (e: IllegalArgumentException) {
             throw UsageError(e.message ?: "Invalid configuration")
         }
+}
+
+/**
+ * Scores an already-tested [version] against a reference version in a second pass: reads both runs'
+ * archived responses for the testset and computes the comparative KPIs, writing them under [runId] so
+ * they land on the candidate test run. Run after both versions' `test` passes.
+ */
+internal class Compare<R : TravelPlannerRequest>(
+    private val application: String,
+    private val tester: TesterConfig<R>?,
+) : VersionedCommand("compare") {
+    override fun help(context: Context) =
+        "Compare a tested version against a reference version's stored responses (second pass)."
+
+    private val referenceVersion: String by
+        option("--reference-version", help = "The baseline version to score against").required()
+    private val testsetVersion: String by
+        option("--testset-version", help = "Label of the request set both runs exercised").required()
+    private val runId: String? by
+        option("--run-id", help = "Run id to write the comparative KPIs under; pass the candidate test's run id so they join that run")
+    private val origin: String by
+        option("--origin", help = "How this run was triggered, e.g. nightly, manual, local", envvar = "TRAKPI_RUN_ORIGIN").default("local")
+    private val label: String? by
+        option("--label", help = "Optional tag grouping this run with a named experiment", envvar = "TRAKPI_RUN_LABEL")
+
+    override fun run() {
+        val tester = tester ?: throw UsageError("Testing is not configured for this planner.")
+        val resultsReader = tester.resultsReader ?: throw UsageError("Comparison needs the response archive; set TRAKPI_GCS_BUCKET.")
+        if (tester.comparativeKpiCalculators.isEmpty())
+            throw UsageError("No comparative KPI calculators are configured for this planner.")
+        val (plannerVersion, referencePlannerVersion, testset) =
+            try {
+                Triple(PlannerVersion(version), PlannerVersion(referenceVersion), TestsetVersion(testsetVersion))
+            } catch (e: IllegalArgumentException) {
+                throw UsageError(e.message ?: "Invalid version")
+            }
+        Comparator(
+                run =
+                    RunMetadata.create(
+                        version = plannerVersion,
+                        application = application,
+                        startedAt = Instant.now(),
+                        referenceVersion = referencePlannerVersion,
+                        testsetVersion = testset,
+                        origin = origin,
+                        label = label?.takeIf { it.isNotBlank() },
+                        runId = runId?.takeIf { it.isNotBlank() },
+                    ),
+                referenceVersion = referencePlannerVersion,
+                resultsReader = resultsReader,
+                comparativeKpiCalculators = tester.comparativeKpiCalculators,
+                resultsWriter = tester.resultsWriter,
+            )
+            .run()
+    }
 }
 
 /**

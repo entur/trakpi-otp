@@ -28,7 +28,11 @@ data class RunMetadata(
     val label: String?,
 ) {
     companion object {
-        /** Builds run metadata for [version] started at [startedAt], with a filesystem-safe [runId]. */
+        /**
+         * Builds run metadata for [version] started at [startedAt]. [runId] defaults to a
+         * filesystem-safe id derived from the version and start time; pass an explicit one to write a
+         * second pass (e.g. a compare) under an earlier test run's id.
+         */
         fun create(
             version: PlannerVersion,
             application: String,
@@ -37,9 +41,10 @@ data class RunMetadata(
             referenceVersion: PlannerVersion? = null,
             origin: String = "local",
             label: String? = null,
+            runId: String? = null,
         ): RunMetadata =
             RunMetadata(
-                runId = "${version.value}_${startedAt.toString().replace(":", "")}",
+                runId = runId ?: "${version.value}_${startedAt.toString().replace(":", "")}",
                 version = version,
                 application = application,
                 referenceVersion = referenceVersion,
