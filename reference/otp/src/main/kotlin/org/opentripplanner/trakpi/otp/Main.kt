@@ -10,6 +10,7 @@ import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalcu
 import org.opentripplanner.trakpi.otp.drill.OtpDrillDownRenderer
 import org.opentripplanner.trakpi.otp.kpi.MinGeneralizedCostKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinStreetDistanceKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.MinTransferTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
@@ -55,6 +56,7 @@ fun main(args: Array<String>) {
             MinTransfersKPICalculator(),
             MinGeneralizedCostKPICalculator(),
             MinStreetDistanceKPICalculator(),
+            MinTransferTimeKPICalculator(),
             DepartureCountKPICalculator(),
             GraphQlErrorCountKPICalculator(),
         )
