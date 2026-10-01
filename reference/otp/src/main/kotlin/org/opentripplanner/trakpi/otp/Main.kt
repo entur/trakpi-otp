@@ -3,6 +3,7 @@ package org.opentripplanner.trakpi.otp
 import java.nio.file.Path
 import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.GraphQlErrorCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItinerariesMatchReferenceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ItineraryCountMatchesReferenceKPICalculator
@@ -51,6 +52,7 @@ fun main(args: Array<String>) {
             FastestItineraryKPICalculator(),
             MinTransfersKPICalculator(),
             DepartureCountKPICalculator(),
+            GraphQlErrorCountKPICalculator(),
         )
     // Comparative KPIs score a subject against the reference run's response for the same request.
     // Declaring a comparative KPI here also pulls in the required fields into prepared results.
