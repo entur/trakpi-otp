@@ -30,7 +30,7 @@ class EnsureKpiFieldsTest {
     @Test
     fun `adds every routing KPI's fields to a trip request, and nothing departure-only`() {
         val out = apply("{ trip(from: {place: \"A\"}) { tripPatterns { startTime } } }")
-        listOf("duration", "legs", "mode", "debugOutput", "totalTime").forEach { assertTrue(it in out, "expected '$it' in:\n$out") }
+        listOf("duration", "legs", "ride", "debugOutput", "totalTime").forEach { assertTrue(it in out, "expected '$it' in:\n$out") }
         assertFalse("estimatedCalls" in out, out) // departure KPI's root fields aren't in a trip request
     }
 
