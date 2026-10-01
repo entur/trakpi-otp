@@ -11,7 +11,8 @@ class DepartureCountKPICalculator : OtpKPICalculator {
     override val requiredFields = RequiredFields(setOf("stopPlace", "quay"), "{ estimatedCalls { realtime } }")
 
     override fun calculate(response: TravelPlannerResponse): Kpi? {
-        val data = (Json.parseToJsonElement(response.raw) as? JsonObject)?.get("data") as? JsonObject ?: return null
+        val json = runCatching { Json.parseToJsonElement(response.raw) }.getOrNull() as? JsonObject ?: return null
+        val data = json["data"] as? JsonObject ?: return null
         val place = data["stopPlace"] as? JsonObject ?: data["quay"] as? JsonObject ?: return null
         val calls = place["estimatedCalls"] as? JsonArray ?: return null
         return Kpi("departureCount", calls.size.toDouble())
