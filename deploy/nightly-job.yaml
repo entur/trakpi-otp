@@ -15,7 +15,7 @@ metadata:
     app: trakpi-test
 spec:
   backoffLimit: 0 # a failed run is a failed run; don't silently retry
-  activeDeadlineSeconds: 14400 # 4h cap (two graph builds + two scoring passes + compare)
+  activeDeadlineSeconds: 28800 # 8h cap (two graph builds + two scoring passes + compare)
   ttlSecondsAfterFinished: 86400 # let Kubernetes clean the finished Job up after a day
   template:
     metadata:
