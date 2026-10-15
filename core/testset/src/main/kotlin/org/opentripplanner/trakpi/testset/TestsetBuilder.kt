@@ -20,14 +20,14 @@ class TestsetBuilder<T>(
         println("Loading requests from the source…")
         val raw = source.load()
         println("Loaded ${raw.size} request(s); applying transforms…")
-        val prepared = mutableListOf<T>()
+        val prepared = mutableListOf<Request>()
         var skipped = 0
         for (request in raw) {
             if (targetSize != null && prepared.size >= targetSize) break
             try {
                 val working = codec.deserialize(request)
                 val transformed = transforms.fold(working) { current, transform -> transform.apply(current) }
-                prepared.add(transformed)
+                prepared.add(codec.serialize(transformed))
             } catch (e: Exception) {
                 skipped++
                 println("  skipped request ${request.id} (${e.javaClass.simpleName}: ${e.message?.take(120)})")
@@ -39,7 +39,7 @@ class TestsetBuilder<T>(
             println("  transformed ${prepared.size}/${raw.size}")
         if (skipped > 0) println("Skipped $skipped unparseable request(s).")
         println("Storing testset $api/$version (${prepared.size} request(s))…")
-        return Testset(api, version, prepared.map(codec::serialize)).also(store::store)
+        return Testset(api, version, prepared).also(store::store)
     }
 
     private companion object {
