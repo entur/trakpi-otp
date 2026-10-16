@@ -31,7 +31,6 @@ import org.opentripplanner.trakpi.storage.gcs.GcsRequestFileLoader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsReader
 import org.opentripplanner.trakpi.storage.gcs.GcsResultsWriter
 import org.opentripplanner.trakpi.storage.gcs.GcsTestsetStore
-import org.opentripplanner.trakpi.tester.FanOutResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.RunReader
@@ -81,6 +80,7 @@ fun main(args: Array<String>) {
                 travelPlanner = OTPTravelPlanner(endpoint, clientName = "entur-trakpi-dev"),
                 kpiCalculators = kpiCalculators,
                 resultsWriter = resultsWriter(),
+                responseArchiveWriter = responseArchiveWriter(),
                 comparativeKpiCalculators = comparativeKpiCalculators,
                 resultsReader = resultsReader(),
                 requestFileLoader = requestFileLoader(),
@@ -145,21 +145,17 @@ private fun resultsReader(): ResultsReader {
     return FileResultsReader(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results"))
 }
 
+/** Records each result's KPIs: to BigQuery when TRAKPI_BQ_PROJECT is set, otherwise to local result files. */
 private fun resultsWriter(): ResultsWriter {
-    val writers = buildList {
-        val bqProject = System.getenv("TRAKPI_BQ_PROJECT")
-        if (bqProject != null) {
-            add(
-                BigQueryResultsWriter.create(
-                    projectId = bqProject,
-                    dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
-                    table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
-                )
-            )
-        } else {
-            add(FileResultsWriter(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results")))
-        }
-        System.getenv("TRAKPI_GCS_BUCKET")?.let { add(GcsResultsWriter.create(it)) }
+    System.getenv("TRAKPI_BQ_PROJECT")?.let {
+        return BigQueryResultsWriter.create(
+            projectId = it,
+            dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
+            table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
+        )
     }
-    return FanOutResultsWriter(writers)
+    return FileResultsWriter(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results"))
 }
+
+/** Archives each tested request and response to GCS when TRAKPI_GCS_BUCKET is set, otherwise null. */
+private fun responseArchiveWriter(): ResultsWriter? = System.getenv("TRAKPI_GCS_BUCKET")?.let { GcsResultsWriter.create(it) }

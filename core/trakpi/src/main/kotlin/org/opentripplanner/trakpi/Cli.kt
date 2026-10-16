@@ -24,6 +24,7 @@ import org.opentripplanner.trakpi.config.TrakpiConfigLoader
 import org.opentripplanner.trakpi.orchestrator.PlannerOrchestrator
 import org.opentripplanner.trakpi.tester.Comparator
 import org.opentripplanner.trakpi.tester.DirectoryRequestFileLoader
+import org.opentripplanner.trakpi.tester.FanOutResultsWriter
 import org.opentripplanner.trakpi.tester.Tester
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.testset.RequestCodec
@@ -46,7 +47,10 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 /**
  * The runtime side of a planner integration: what the `test`, `compare` and `drill` commands need to run
  * a planner build, score its responses, compare two runs, and drill down into one. (The `start`/`stop`
- * lifecycle commands need no configuration.) [comparativeKpiCalculators] and [resultsReader] back
+ * lifecycle commands need no configuration.) [resultsWriter] records each result's KPIs, for both `test`
+ * and `compare`. [responseArchiveWriter] additionally archives each tested request and its raw response so that
+ * a later `compare` can read them back; only `test` uses it, since `compare` produces no new responses.
+ * [comparativeKpiCalculators] and [resultsReader] back
  * `compare`: it reads each run's archived responses and scores the candidate against a reference in a
  * second pass. [runReader] and [drillDownRenderer] back `drill`: the former reads which runs exercised a
  * request, the latter renders one run's response comparison (both are planner-agnostic to the command —
@@ -57,6 +61,7 @@ class TesterConfig<R : TravelPlannerRequest>(
     val travelPlanner: TravelPlanner<R>,
     val kpiCalculators: List<KPICalculator>,
     val resultsWriter: ResultsWriter,
+    val responseArchiveWriter: ResultsWriter? = null,
     val comparativeKpiCalculators: List<ComparativeKPICalculator> = emptyList(),
     val resultsReader: ResultsReader? = null,
     val requestFileLoader: RequestFileLoader? = null,
@@ -207,7 +212,9 @@ internal class Test<R : TravelPlannerRequest>(
                     requestLoader = tester.requestLoader,
                     travelPlanner = tester.travelPlanner,
                     kpiCalculators = tester.kpiCalculators,
-                    resultsWriter = tester.resultsWriter,
+                    resultsWriter =
+                        tester.responseArchiveWriter?.let { FanOutResultsWriter(listOf(tester.resultsWriter, it)) }
+                            ?: tester.resultsWriter,
                 )
                 .run()
         } finally {

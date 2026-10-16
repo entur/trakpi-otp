@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
+import org.opentripplanner.trakpi.tester.spi.ResponsePair
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
@@ -27,8 +28,10 @@ class FileResultsReader(private val resultsDir: Path) : ResultsReader {
 
     private val indexes = HashMap<Pair<PlannerVersion, TestsetVersion>, Map<String, Path>>()
 
-    override fun responses(version: PlannerVersion, testsetVersion: TestsetVersion): Sequence<Pair<String, TravelPlannerResponse>> =
-        index(version, testsetVersion).asSequence().map { (requestId, file) -> requestId to read(file) }
+    override fun responsePairs(subject: PlannerVersion, reference: PlannerVersion, testsetVersion: TestsetVersion): Sequence<ResponsePair> =
+        index(subject, testsetVersion).asSequence().map { (requestId, file) ->
+            ResponsePair(requestId, read(file), response(reference, testsetVersion, requestId))
+        }
 
     override fun response(version: PlannerVersion, testsetVersion: TestsetVersion, requestId: String): TravelPlannerResponse? =
         index(version, testsetVersion)[requestId]?.let(::read)

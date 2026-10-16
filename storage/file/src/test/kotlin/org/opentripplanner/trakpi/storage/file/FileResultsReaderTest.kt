@@ -34,20 +34,22 @@ class FileResultsReaderTest {
 
         val reader = FileResultsReader(dir)
 
-        val base = reader.responses(PlannerVersion("base"), testset).toMap()
-        assertEquals(1, base.size)
-        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", base.getValue("request-1").raw)
-        assertEquals("trip", base.getValue("request-1").method)
-        assertEquals(true, base.getValue("request-1").success)
-        assertEquals("200", base.getValue("request-1").attributes["http_status_code"])
+        val pairs = reader.responsePairs(PlannerVersion("mod"), PlannerVersion("base"), testset).toList()
+        assertEquals(listOf("request-1"), pairs.map { it.requestId })
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", pairs.single().subject.raw)
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", pairs.single().reference?.raw)
+        assertNull(reader.responsePairs(PlannerVersion("mod"), PlannerVersion("other"), testset).single().reference)
 
-        val mod = reader.responses(PlannerVersion("mod"), testset).toMap()
-        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", mod.getValue("request-1").raw)
+        val base = reader.response(PlannerVersion("base"), testset, "request-1")!!
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", base.raw)
+        assertEquals("trip", base.method)
+        assertEquals(true, base.success)
+        assertEquals("200", base.attributes["http_status_code"])
 
-        assertEquals(
-            """{"data":{"trip":{"tripPatterns":[1,2]}}}""",
-            reader.response(PlannerVersion("base"), testset, "request-1")!!.raw,
-        )
+        val mod = reader.response(PlannerVersion("mod"), testset, "request-1")!!
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", mod.raw)
+
+        assertEquals(emptyList(), reader.responsePairs(PlannerVersion("other"), PlannerVersion("base"), testset).toList())
         assertNull(reader.response(PlannerVersion("other"), testset, "request-1"))
     }
 

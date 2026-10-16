@@ -17,8 +17,8 @@ import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
  * runs are compared afterwards without re-running the planner. Only the subject responses that have a
  * matching reference response are scored; the rest are counted and reported.
  *
- * The subject responses are consumed one at a time, each with its reference response looked up by requestId,
- * so memory stays flat however large the testset is.
+ * The response pairs are consumed one at a time, so memory stays flat however large the testset is; how fast
+ * they are read is up to the [resultsReader].
  */
 class Comparator(
     private val run: RunMetadata,
@@ -32,12 +32,12 @@ class Comparator(
         var compared = 0
         var scored = 0
         var missingReference = 0
-        resultsReader.responses(run.version, run.testsetVersion).forEach { (requestId, subjectResponse) ->
+        for ((requestId, subjectResponse, referenceResponse) in
+            resultsReader.responsePairs(run.version, referenceVersion, run.testsetVersion)) {
             if (++compared % PROGRESS_INTERVAL == 0) println("  compared $compared response(s)")
-            val referenceResponse = resultsReader.response(referenceVersion, run.testsetVersion, requestId)
             if (referenceResponse == null) {
                 missingReference++
-                return@forEach
+                continue
             }
             val kpis = comparativeKpiCalculators.mapNotNull { it.calculate(subjectResponse, referenceResponse) }
             if (kpis.isNotEmpty()) {
