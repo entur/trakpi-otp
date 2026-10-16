@@ -34,14 +34,14 @@ class FileResultsReaderTest {
 
         val reader = FileResultsReader(dir)
 
-        val base = reader.responses(PlannerVersion("base"), testset)
+        val base = reader.responses(PlannerVersion("base"), testset).toMap()
         assertEquals(1, base.size)
         assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", base.getValue("request-1").raw)
         assertEquals("trip", base.getValue("request-1").method)
         assertEquals(true, base.getValue("request-1").success)
         assertEquals("200", base.getValue("request-1").attributes["http_status_code"])
 
-        val mod = reader.responses(PlannerVersion("mod"), testset)
+        val mod = reader.responses(PlannerVersion("mod"), testset).toMap()
         assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", mod.getValue("request-1").raw)
 
         assertEquals(

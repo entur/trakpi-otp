@@ -2,7 +2,9 @@ package org.opentripplanner.trakpi.storage.gcs
 
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
+import com.google.cloud.storage.StorageException
 import com.google.cloud.storage.StorageOptions
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
@@ -15,21 +17,24 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
  */
 class GcsResultsReader(private val storage: Storage, private val bucket: String) : ResultsReader {
 
-    override fun responses(version: PlannerVersion, testsetVersion: TestsetVersion): Map<String, TravelPlannerResponse> {
+    override fun responses(version: PlannerVersion, testsetVersion: TestsetVersion): Sequence<Pair<String, TravelPlannerResponse>> {
         val prefix = GcsResultsWriter.resultsPrefix(testsetVersion.value, version.value)
-        val byRequest = HashMap<String, TravelPlannerResponse>()
-        for (blob in storage.list(bucket, Storage.BlobListOption.prefix(prefix)).iterateAll()) {
-            val requestId = blob.name.removePrefix(prefix)
-            if (requestId.isEmpty() || requestId.contains('/')) continue
-            byRequest[requestId] = ResponseJson.parse(String(blob.getContent()))
-        }
-        return byRequest
+        return storage.list(bucket, Storage.BlobListOption.prefix(prefix)).iterateAll().asSequence()
+            .map { blob -> blob.name.removePrefix(prefix) to blob }
+            .filter { (requestId, _) -> requestId.isNotEmpty() && !requestId.contains('/') }
+            .map { (requestId, blob) -> requestId to ResponseJson.parse(String(blob.getContent())) }
     }
 
     override fun response(version: PlannerVersion, testsetVersion: TestsetVersion, requestId: String): TravelPlannerResponse? {
         val name = GcsResultsWriter.resultsPrefix(testsetVersion.value, version.value) + requestId
-        val blob = storage.get(BlobId.of(bucket, name)) ?: return null
-        return ResponseJson.parse(String(blob.getContent()))
+        val content =
+            try {
+                storage.readAllBytes(BlobId.of(bucket, name))
+            } catch (e: StorageException) {
+                if (e.code == HTTP_NOT_FOUND) return null
+                throw e
+            }
+        return ResponseJson.parse(String(content))
     }
 
     companion object {

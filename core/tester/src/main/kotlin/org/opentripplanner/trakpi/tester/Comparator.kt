@@ -16,6 +16,9 @@ import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
  * Comparison is decoupled from the test run: each version is tested once, on its own, and any two stored
  * runs are compared afterwards without re-running the planner. Only the subject responses that have a
  * matching reference response are scored; the rest are counted and reported.
+ *
+ * The subject responses are consumed one at a time, each with its reference response looked up by requestId,
+ * so memory stays flat however large the testset is.
  */
 class Comparator(
     private val run: RunMetadata,
@@ -25,16 +28,13 @@ class Comparator(
     private val resultsWriter: ResultsWriter,
 ) {
     fun run() {
-        val subject = resultsReader.responses(run.version, run.testsetVersion)
-        val reference = resultsReader.responses(referenceVersion, run.testsetVersion)
-        println(
-            "Comparing ${run.version} against $referenceVersion on testset ${run.testsetVersion}: " +
-                "${subject.size} subject and ${reference.size} reference response(s)."
-        )
+        println("Comparing ${run.version} against $referenceVersion on testset ${run.testsetVersion}…")
+        var compared = 0
         var scored = 0
         var missingReference = 0
-        subject.forEach { (requestId, subjectResponse) ->
-            val referenceResponse = reference[requestId]
+        resultsReader.responses(run.version, run.testsetVersion).forEach { (requestId, subjectResponse) ->
+            if (++compared % PROGRESS_INTERVAL == 0) println("  compared $compared response(s)")
+            val referenceResponse = resultsReader.response(referenceVersion, run.testsetVersion, requestId)
             if (referenceResponse == null) {
                 missingReference++
                 return@forEach
@@ -59,6 +59,11 @@ class Comparator(
             }
         }
         val missingNote = if (missingReference > 0) "; $missingReference had no reference response" else ""
-        println("Wrote comparative KPIs for $scored request(s)$missingNote.")
+        println("Compared $compared response(s); wrote comparative KPIs for $scored request(s)$missingNote.")
+    }
+
+    private companion object {
+        /** Emit a progress line every this many compared responses. */
+        const val PROGRESS_INTERVAL = 1000
     }
 }
