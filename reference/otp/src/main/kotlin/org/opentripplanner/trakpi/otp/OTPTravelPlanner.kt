@@ -39,8 +39,10 @@ class OTPTravelPlanner(
                 .timeout(Duration.ofSeconds(30))
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build()
+        val start = System.nanoTime()
         val response = http.send(httpRequest, BodyHandlers.ofString())
-        return toResponse(response.body(), response.statusCode())
+        val responseTime = Duration.ofNanos(System.nanoTime() - start)
+        return toResponse(response.body(), response.statusCode(), responseTime)
     }
 
     /**
@@ -48,7 +50,7 @@ class OTPTravelPlanner(
      * field (e.g. trip or stopPlace), and the request succeeded when the transport returned 2xx
      * and the body carries `data` with no `errors`.
      */
-    private fun toResponse(body: String, statusCode: Int): TravelPlannerResponse {
+    private fun toResponse(body: String, statusCode: Int, responseTime: Duration): TravelPlannerResponse {
         val json = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
         val data = json?.get("data") as? JsonObject
         val errors = json?.get("errors") as? JsonArray
@@ -62,6 +64,7 @@ class OTPTravelPlanner(
                     "http_status_code" to statusCode.toString(),
                     "http_status_class" to HttpStatusClass.of(statusCode).label,
                 ),
+            responseTime = responseTime,
         )
     }
 }

@@ -12,6 +12,7 @@ import org.opentripplanner.trakpi.otp.kpi.MinGeneralizedCostKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinStreetDistanceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransferTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.ResponseTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
 import org.opentripplanner.trakpi.otp.testset.transforms.EnsureKpiFields
@@ -51,6 +52,7 @@ fun main(args: Array<String>) {
         listOf(
             ItineraryCountKPICalculator(),
             RoutingTimeKPICalculator(),
+            ResponseTimeKPICalculator(),
             FastestItineraryKPICalculator(),
             MinTransfersKPICalculator(),
             MinGeneralizedCostKPICalculator(),
