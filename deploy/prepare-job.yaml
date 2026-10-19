@@ -42,7 +42,10 @@ spec:
               type: RuntimeDefault
           env:
             - { name: TRAKPI_REQUESTS_ENV, value: "prd" }
-            - { name: TRAKPI_REQUESTS_SAMPLE_SIZE, value: "50000" }
+            - { name: TRAKPI_REQUESTS_SAMPLE_SIZE, value: "25000" }
+            # The share of the request log BigQuery samples from. Every hour contributes an even share of the sample
+            # size, and night hours log far fewer requests than the average, so this leaves headroom for them.
+            - { name: TRAKPI_REQUESTS_SAMPLE_PERCENT, value: "5" }
             - { name: TRAKPI_GCS_BUCKET, value: "${GCS_BUCKET}" }
             - { name: GOOGLE_CLOUD_PROJECT, value: "${APP_PROJECT}" }
             # The JVM defaults its max heap to 25% of the container memory; give it most of the limit.

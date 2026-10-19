@@ -7,7 +7,8 @@ import org.opentripplanner.trakpi.common.TestsetVersion
  * planner's working form via [codec], applies the [transforms] in order (a transform that does not
  * apply returns the request unchanged), serializes each back to its stored form, then persists the result
  * via [store] and returns it. Requests that fail to deserialize or transform are skipped with a warning,
- * so a handful of unparseable requests in the sample don't crash the whole testset build.
+ * so a handful of unparseable requests in the sample don't crash the whole testset build. A request whose id
+ * repeats an earlier one is skipped too, since a testset holds one request per id.
  */
 class TestsetBuilder<T>(
     private val source: TestsetSource,
@@ -22,8 +23,14 @@ class TestsetBuilder<T>(
         println("Loaded ${raw.size} request(s); applying transforms…")
         val prepared = mutableListOf<Request>()
         var skipped = 0
+        val seenIds = HashSet<String>()
+        var duplicates = 0
         for (request in raw) {
             if (targetSize != null && prepared.size >= targetSize) break
+            if (!seenIds.add(request.id)) {
+                duplicates++
+                continue
+            }
             try {
                 val working = codec.deserialize(request)
                 val transformed = transforms.fold(working) { current, transform -> transform.apply(current) }
@@ -38,6 +45,7 @@ class TestsetBuilder<T>(
         if (prepared.size == raw.size || prepared.size == targetSize)
             println("  transformed ${prepared.size}/${raw.size}")
         if (skipped > 0) println("Skipped $skipped unparseable request(s).")
+        if (duplicates > 0) println("Skipped $duplicates request(s) with a duplicate id.")
         println("Storing testset $api/$version (${prepared.size} request(s))…")
         return Testset(api, version, prepared).also(store::store)
     }

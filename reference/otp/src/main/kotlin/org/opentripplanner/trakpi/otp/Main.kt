@@ -121,6 +121,7 @@ private fun testsetSource(sampleSize: Int): TestsetSource? {
     return BigQueryTestsetSource.create(
         environment = RequestEnvironment.valueOf(environment.uppercase()),
         sampleSize = sampleSize,
+        samplePercent = System.getenv("TRAKPI_REQUESTS_SAMPLE_PERCENT")?.toDouble() ?: BigQueryTestsetSource.DEFAULT_SAMPLE_PERCENT,
     )
 }
 
