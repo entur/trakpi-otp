@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Rebuild even if the prod release is unchanged"
+        description: "Rebuild even if the prod release is unchanged, replacing its existing testset"
         type: boolean
         default: false
       trakpi_image:

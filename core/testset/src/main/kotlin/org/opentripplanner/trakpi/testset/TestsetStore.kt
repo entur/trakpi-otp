@@ -4,6 +4,10 @@ import org.opentripplanner.trakpi.common.TestsetVersion
 
 /** Persists prepared testsets and lists their versions, keyed by [Testset.api] and [Testset.version]. */
 interface TestsetStore {
+    /**
+     * Stores [testset], replacing any testset already stored under the same api and version, so a rebuilt
+     * testset never mixes in requests from the one it replaces.
+     */
     fun store(testset: Testset)
 
     /** The versions available for [api] */

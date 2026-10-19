@@ -1,7 +1,9 @@
 package org.opentripplanner.trakpi.storage.file
 
 import java.nio.file.Path
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
@@ -16,8 +18,10 @@ import org.opentripplanner.trakpi.testset.TestsetStore
  * `<root>/<api>/<version>/<requestId>`.
  */
 class FileTestsetStore(private val root: Path) : TestsetStore {
+    @OptIn(ExperimentalPathApi::class)
     override fun store(testset: Testset) {
         val dir = root.resolve(testset.api).resolve(testset.version.value)
+        dir.deleteRecursively()
         dir.createDirectories()
         testset.requests.forEach { dir.resolve(it.id).writeText(it.body) }
     }

@@ -1,6 +1,7 @@
 # One-shot testset prepare: reads the prod request log from BigQuery, cleans and snaps the requests, and
 # writes a fresh testset to the archive bucket under the prod release it was built for (--version). Created
-# on demand by .github/workflows/prepare.yml only when no testset yet exists for the current prod release,
+# on demand by .github/workflows/prepare.yml only when no testset yet exists for the current prod release
+# (or when forced, in which case the new testset replaces the existing one),
 # so the testset rotates with prod releases rather than daily.
 # Runs as the prepare KSA (deneir request-log read + archive-bucket write).
 #   envsubst < deploy/prepare-job.yaml | kubectl create -f -

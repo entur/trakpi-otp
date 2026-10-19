@@ -1,6 +1,8 @@
 package org.opentripplanner.trakpi.storage.file
 
 import java.nio.file.Files
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,5 +23,19 @@ class FileTestsetStoreTest {
         assertEquals("q2", root.resolve("transmodel").resolve("2026-07-16").resolve("r2").readText())
         assertEquals(listOf(TestsetVersion("2026-07-16")), store.versions("transmodel"))
         assertTrue(store.versions("missing").isEmpty())
+    }
+
+    @Test
+    fun `replaces the requests of a version that is stored again`() {
+        val root = Files.createTempDirectory("testsets")
+        val store = FileTestsetStore(root)
+        val version = TestsetVersion("2026-07-16")
+
+        store.store(Testset("transmodel", version, listOf(Request("old", "q1"), Request("kept", "q2"))))
+        store.store(Testset("transmodel", version, listOf(Request("kept", "q3"), Request("new", "q4"))))
+
+        val dir = root.resolve("transmodel").resolve("2026-07-16")
+        assertEquals(setOf("kept", "new"), dir.listDirectoryEntries().map { it.name }.toSet())
+        assertEquals("q3", dir.resolve("kept").readText())
     }
 }
