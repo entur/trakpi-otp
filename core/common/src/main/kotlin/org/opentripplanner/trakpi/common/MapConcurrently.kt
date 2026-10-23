@@ -1,4 +1,4 @@
-package org.opentripplanner.trakpi.storage.gcs
+package org.opentripplanner.trakpi.common
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorCompletionService
@@ -6,12 +6,12 @@ import java.util.concurrent.Executors
 
 /**
  * Lazily maps each element with [transform], running up to [maxInFlight] transforms at once on virtual threads, and
- * yields the non-null results as they complete, in no particular order. Meant for transforms that mostly wait on
- * storage: overlapping them hides the latency. Elements are pulled from the source only as slots free up, so at
+ * yields the non-null results as they complete, in no particular order. Meant for transforms that mostly wait on I/O,
+ * such as storage or a remote planner. Elements are pulled from the source only as slots free up, so at
  * most [maxInFlight] elements are being transformed or waiting to be consumed at any time. A transform's exception
  * is rethrown to the consumer when its result would have been yielded.
  */
-internal fun <T, R : Any> Sequence<T>.mapConcurrently(maxInFlight: Int, transform: (T) -> R?): Sequence<R> {
+fun <T, R : Any> Sequence<T>.mapConcurrently(maxInFlight: Int, transform: (T) -> R?): Sequence<R> {
     require(maxInFlight >= 1) { "maxInFlight must be at least 1, was $maxInFlight" }
     val source = this
     return sequence {

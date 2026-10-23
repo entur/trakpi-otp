@@ -7,10 +7,12 @@ import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.associate
+import com.github.ajalt.clikt.parameters.options.check
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 import java.time.Instant
@@ -176,6 +178,11 @@ internal class Test<R : TravelPlannerRequest>(
             .default("local")
     private val label: String? by
         option("--label", help = "Optional tag grouping this run with a named experiment", envvar = "TRAKPI_RUN_LABEL")
+    private val concurrency: Int by
+        option("--concurrency", help = "How many requests are in flight against the planner at once")
+            .int()
+            .default(1)
+            .check("must be at least 1") { it >= 1 }
 
     // --version identifies the run: it labels every result and keys the archived responses a later run
     // compares against.
@@ -215,6 +222,7 @@ internal class Test<R : TravelPlannerRequest>(
                     resultsWriter =
                         tester.responseArchiveWriter?.let { FanOutResultsWriter(listOf(tester.resultsWriter, it)) }
                             ?: tester.resultsWriter,
+                    concurrency = concurrency,
                 )
                 .run()
         } finally {

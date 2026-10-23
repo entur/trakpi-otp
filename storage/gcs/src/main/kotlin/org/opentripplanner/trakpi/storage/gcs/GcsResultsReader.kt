@@ -7,6 +7,7 @@ import com.google.cloud.storage.StorageOptions
 import java.net.HttpURLConnection.HTTP_NOT_FOUND
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
+import org.opentripplanner.trakpi.common.mapConcurrently
 import org.opentripplanner.trakpi.tester.spi.ResponsePair
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse

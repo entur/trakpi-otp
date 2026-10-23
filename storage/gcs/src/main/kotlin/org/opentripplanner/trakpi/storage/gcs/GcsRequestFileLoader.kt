@@ -4,6 +4,7 @@ import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
 import org.opentripplanner.trakpi.common.TestsetVersion
+import org.opentripplanner.trakpi.common.mapConcurrently
 import org.opentripplanner.trakpi.tester.spi.RequestFile
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 

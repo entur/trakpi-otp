@@ -1,4 +1,4 @@
-package org.opentripplanner.trakpi.storage.gcs
+package org.opentripplanner.trakpi.common
 
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test

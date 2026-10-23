@@ -35,7 +35,7 @@ spec:
       initContainers:
         - name: reference
           image: ${TRAKPI_IMAGE}
-          args: ["test", "--version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion"]
+          args: ["test", "--version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion", "--concurrency", "4"]
           securityContext: &secctx
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -63,17 +63,17 @@ spec:
             - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
             - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
           resources:
-            requests: { cpu: "500m", memory: "1Gi" }
+            requests: { cpu: "2", memory: "1Gi" }
             limits: { memory: "1Gi" }
         # The candidate test archives its own responses; --reference-version only labels the run, and
         # --run-id ties it to the compare pass below. No in-run comparison happens here.
         - name: candidate
           image: ${TRAKPI_IMAGE}
-          args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion", "--run-id", "$(POD_NAME)"]
+          args: ["test", "--version", "${CANDIDATE_VERSION}", "--reference-version", "${PROD_VERSION}", "--testset-version", "${TESTSET}", "--start", "--stop-on-completion", "--run-id", "$(POD_NAME)", "--concurrency", "4"]
           securityContext: *secctx
           env: *runenv
           resources:
-            requests: { cpu: "500m", memory: "1Gi" }
+            requests: { cpu: "2", memory: "1Gi" }
             limits: { memory: "1Gi" }
       containers:
         # Second pass: read the candidate's and reference's archived responses and write the comparative

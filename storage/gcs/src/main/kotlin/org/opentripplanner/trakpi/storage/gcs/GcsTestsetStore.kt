@@ -5,6 +5,7 @@ import com.google.cloud.storage.BlobInfo
 import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
 import org.opentripplanner.trakpi.common.TestsetVersion
+import org.opentripplanner.trakpi.common.mapConcurrently
 import org.opentripplanner.trakpi.testset.Request
 import org.opentripplanner.trakpi.testset.Testset
 import org.opentripplanner.trakpi.testset.TestsetStore
