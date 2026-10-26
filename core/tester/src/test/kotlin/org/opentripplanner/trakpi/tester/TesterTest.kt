@@ -7,15 +7,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
-import org.opentripplanner.trakpi.tester.spi.RequestFile
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
-import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
+import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
+import org.opentripplanner.trakpi.tester.spi.kpi.RequestResponseKPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.ResponseKPICalculator
 
 class TesterTest {
     private val run =
@@ -26,24 +27,18 @@ class TesterTest {
             testsetVersion = TestsetVersion("testset-1"),
         )
 
-    private data class Request(val id: String) : TravelPlannerRequest
-
-    private val files = (1..100).map { RequestFile(id = "request-$it", body = "body-$it") }
+    private val files = (1..100).map { TravelPlannerRequest(id = "request-$it", raw = "body-$it") }
     private val fileLoader =
         object : RequestFileLoader {
             override fun loadAll(testsetVersion: TestsetVersion) = files
         }
-    private val requestLoader =
-        object : RequestLoader<Request> {
-            override fun load(file: RequestFile) = Request(file.id)
-        }
 
     /** Answers after a short delay, recording how many calls overlapped; fails the requests in [failing]. */
-    private class SlowPlanner(private val failing: Set<String> = emptySet()) : TravelPlanner<Request> {
+    private class SlowPlanner(private val failing: Set<String> = emptySet()) : TravelPlanner {
         private val inFlight = AtomicInteger()
         val maxInFlight = AtomicInteger()
 
-        override fun execute(request: Request): TravelPlannerResponse {
+        override fun execute(request: TravelPlannerRequest): TravelPlannerResponse {
             maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), ::maxOf)
             try {
                 Thread.sleep(5)
@@ -59,23 +54,25 @@ class TesterTest {
     private class RecordingResultsWriter : ResultsWriter {
         private val storing = AtomicInteger()
         val stored = mutableListOf<String>()
+        val kpis = HashMap<String, List<Kpi>>()
 
         override fun store(run: RunMetadata, result: TestCaseResult) {
             check(storing.incrementAndGet() == 1) { "stores overlapped" }
             stored += result.requestId
+            kpis[result.requestId] = result.kpis
             storing.decrementAndGet()
         }
     }
 
     private fun tester(planner: SlowPlanner, writer: ResultsWriter, concurrency: Int) =
-        Tester(run, fileLoader, requestLoader, planner, kpiCalculators = emptyList(), resultsWriter = writer, concurrency = concurrency)
+        Tester(run, fileLoader, planner, kpiCalculators = emptyList(), resultsWriter = writer, concurrency = concurrency)
 
     @Test
     fun `runs requests one at a time and in order by default`() {
         val planner = SlowPlanner()
         val writer = RecordingResultsWriter()
 
-        Tester(run, fileLoader, requestLoader, planner, kpiCalculators = emptyList(), resultsWriter = writer).run()
+        Tester(run, fileLoader, planner, kpiCalculators = emptyList(), resultsWriter = writer).run()
 
         assertEquals(1, planner.maxInFlight.get())
         assertEquals(files.map { it.id }, writer.stored)
@@ -101,5 +98,21 @@ class TesterTest {
         tester(planner, writer, concurrency = 4).run()
 
         assertEquals(files.map { it.id }.toSet() - setOf("request-7", "request-42"), writer.stored.toSet())
+    }
+
+    @Test
+    fun `each calculator receives what it reads, the response alone or the request with it`() {
+        val writer = RecordingResultsWriter()
+        val responseLength = ResponseKPICalculator { response -> Kpi("responseLength", response.raw.length.toDouble()) }
+        val requestMatchesResponse = RequestResponseKPICalculator { request, response ->
+            Kpi("requestMatchesResponse", if (request.id == response.raw) 1.0 else 0.0)
+        }
+
+        Tester(run, fileLoader, SlowPlanner(), listOf(responseLength, requestMatchesResponse), writer, concurrency = 4).run()
+
+        assertEquals(files.size, writer.kpis.size)
+        for ((id, kpis) in writer.kpis) {
+            assertEquals(listOf(Kpi("responseLength", id.length.toDouble()), Kpi("requestMatchesResponse", 1.0)), kpis)
+        }
     }
 }

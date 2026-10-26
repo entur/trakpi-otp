@@ -12,23 +12,25 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /** Executes a request by POSTing its GraphQL query to an OTP Transmodel endpoint. */
 class OTPTravelPlanner(
     private val endpoint: String,
     private val clientName: String,
-) : TravelPlanner<OtpTravelPlannerRequest> {
+) : TravelPlanner {
     // HTTP/1.1 explicitly: the default HTTP/2 client's h2c upgrade over cleartext http can truncate a
     // POST body against OTP's Grizzly servers, resulting in an EOFException.
     private val http =
         HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build()
 
-    override fun execute(request: OtpTravelPlannerRequest): TravelPlannerResponse {
+    override fun execute(request: TravelPlannerRequest): TravelPlannerResponse {
+        val graphQl = OtpRequestBody.parse(request.raw)
         val body =
             buildJsonObject {
-                    put("query", JsonPrimitive(request.query))
-                    request.variables?.let { put("variables", it) }
+                    put("query", JsonPrimitive(graphQl.query))
+                    graphQl.variables?.let { put("variables", it) }
                 }
                 .toString()
         val httpRequest =

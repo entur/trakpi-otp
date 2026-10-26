@@ -1,7 +1,7 @@
 package org.opentripplanner.trakpi.tester.spi
 
 /**
- * A request a travel planner can execute. Each planner defines its own concrete type holding
- * whatever it needs; trakpi treats the request body opaquely.
+ * A request to a travel planner: the testset request identified by [id]. The [raw] body is opaque to
+ * trakpi. The planner interprets it when executing the request, and KPI calculators may interpret it too.
  */
-interface TravelPlannerRequest
+data class TravelPlannerRequest(val id: String, val raw: String)

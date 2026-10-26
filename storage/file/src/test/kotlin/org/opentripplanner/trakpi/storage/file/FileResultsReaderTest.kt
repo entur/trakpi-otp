@@ -34,11 +34,12 @@ class FileResultsReaderTest {
 
         val reader = FileResultsReader(dir)
 
-        val pairs = reader.responsePairs(PlannerVersion("mod"), PlannerVersion("base"), testset).toList()
-        assertEquals(listOf("request-1"), pairs.map { it.requestId })
-        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", pairs.single().subject.raw)
-        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", pairs.single().reference?.raw)
-        assertNull(reader.responsePairs(PlannerVersion("mod"), PlannerVersion("other"), testset).single().reference)
+        val cases = reader.comparisonCases(PlannerVersion("mod"), PlannerVersion("base"), testset).toList()
+        assertEquals(listOf("request-1"), cases.map { it.request.id })
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", cases.single().subject.raw)
+        assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", cases.single().reference?.raw)
+        assertEquals("""{"query":"..."}""", cases.single().request.raw)
+        assertNull(reader.comparisonCases(PlannerVersion("mod"), PlannerVersion("other"), testset).single().reference)
 
         val base = reader.response(PlannerVersion("base"), testset, "request-1")!!
         assertEquals("""{"data":{"trip":{"tripPatterns":[1,2]}}}""", base.raw)
@@ -49,7 +50,7 @@ class FileResultsReaderTest {
         val mod = reader.response(PlannerVersion("mod"), testset, "request-1")!!
         assertEquals("""{"data":{"trip":{"tripPatterns":[1,2,3]}}}""", mod.raw)
 
-        assertEquals(emptyList(), reader.responsePairs(PlannerVersion("other"), PlannerVersion("base"), testset).toList())
+        assertEquals(emptyList(), reader.comparisonCases(PlannerVersion("other"), PlannerVersion("base"), testset).toList())
         assertNull(reader.response(PlannerVersion("other"), testset, "request-1"))
     }
 

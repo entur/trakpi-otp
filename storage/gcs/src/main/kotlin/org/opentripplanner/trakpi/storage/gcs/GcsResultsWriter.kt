@@ -19,7 +19,7 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 class GcsResultsWriter(private val storage: Storage, private val bucket: String) : ResultsWriter {
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
-        write(requestObjectName(run, result.requestId), result.request)
+        write(requestObjectName(run.testsetVersion.value, result.requestId), result.request)
         val response = TravelPlannerResponse(result.rawResponse, result.success, result.method, result.attributes)
         write(responseObjectName(run, result.requestId), ResponseJson.serialize(response))
     }
@@ -34,8 +34,8 @@ class GcsResultsWriter(private val storage: Storage, private val bucket: String)
         fun create(bucket: String): GcsResultsWriter = GcsResultsWriter(StorageOptions.getDefaultInstance().service, bucket)
 
         /** Key for a request */
-        internal fun requestObjectName(run: RunMetadata, requestId: String): String =
-            "requests/${run.testsetVersion.value}/$requestId"
+        internal fun requestObjectName(testsetVersion: String, requestId: String): String =
+            "requests/$testsetVersion/$requestId"
 
         /** Object-name prefix holding a build's responses for a testset. */
         internal fun resultsPrefix(testsetVersion: String, version: String): String = "results/$testsetVersion/$version/"

@@ -13,8 +13,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
-import org.opentripplanner.trakpi.tester.spi.ResponsePair
+import org.opentripplanner.trakpi.tester.spi.ComparisonCase
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
 
 /**
@@ -28,13 +29,19 @@ class FileResultsReader(private val resultsDir: Path) : ResultsReader {
 
     private val indexes = HashMap<Pair<PlannerVersion, TestsetVersion>, Map<String, Path>>()
 
-    override fun responsePairs(subject: PlannerVersion, reference: PlannerVersion, testsetVersion: TestsetVersion): Sequence<ResponsePair> =
+    override fun comparisonCases(subject: PlannerVersion, reference: PlannerVersion, testsetVersion: TestsetVersion): Sequence<ComparisonCase> =
         index(subject, testsetVersion).asSequence().map { (requestId, file) ->
-            ResponsePair(requestId, read(file), response(reference, testsetVersion, requestId))
+            val subjectJson = parseJson(file)
+            val referenceJson = index(reference, testsetVersion)[requestId]?.let(::parseJson)
+            ComparisonCase(
+                request = extractRequest(subjectJson),
+                subject = extractResponse(subjectJson),
+                reference = referenceJson?.let(::extractResponse),
+            )
         }
 
     override fun response(version: PlannerVersion, testsetVersion: TestsetVersion, requestId: String): TravelPlannerResponse? =
-        index(version, testsetVersion)[requestId]?.let(::read)
+        index(version, testsetVersion)[requestId]?.let { extractResponse(parseJson(it)) }
 
     /** requestId -> the file holding its response, for the most recent run of [version] on [testsetVersion]. */
     private fun index(version: PlannerVersion, testsetVersion: TestsetVersion): Map<String, Path> =
@@ -58,9 +65,15 @@ class FileResultsReader(private val resultsDir: Path) : ResultsReader {
     private companion object {
         fun text(obj: JsonObject, key: String) = obj[key]?.jsonPrimitive?.contentOrNull
 
-        fun read(file: Path) = toResponse(Json.parseToJsonElement(file.readText()).jsonObject)
+        fun parseJson(file: Path) = Json.parseToJsonElement(file.readText()).jsonObject
 
-        fun toResponse(obj: JsonObject) =
+        fun extractRequest(obj: JsonObject): TravelPlannerRequest {
+            val id = checkNotNull(text(obj, "requestId")) { "Result has no request id" }
+            val raw = checkNotNull(text(obj, "request")?.takeIf { it.isNotEmpty() }) { "Result for $id has no request body" }
+            return TravelPlannerRequest(id, raw)
+        }
+
+        fun extractResponse(obj: JsonObject) =
             TravelPlannerResponse(
                 raw = text(obj, "rawResponse") ?: "",
                 success = (obj["success"] as? JsonPrimitive)?.booleanOrNull ?: false,

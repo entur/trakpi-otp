@@ -3,7 +3,7 @@ package org.opentripplanner.trakpi.storage.gcs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.opentripplanner.trakpi.common.TestsetVersion
-import org.opentripplanner.trakpi.tester.spi.RequestFile
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 class GcsRequestFileLoaderTest {
     @Test
@@ -16,6 +16,6 @@ class GcsRequestFileLoaderTest {
 
         val files = GcsRequestFileLoader(fake.storage, InMemoryStorage.BUCKET, api = "transmodel", concurrency = 8).loadAll(TestsetVersion("2026-07-20"))
 
-        assertEquals(ids.sorted().map { RequestFile(it, "body-$it") }, files)
+        assertEquals(ids.sorted().map { TravelPlannerRequest(it, "body-$it") }, files)
     }
 }

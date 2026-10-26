@@ -159,9 +159,10 @@ jq -s '[.[].kpis.routingTimeMs | numbers] | add / length' results/<runId>/*.json
 ## Inputs - requests
 Each test run executes a set of requests. Where those requests come from is up to the integration: a
 `spi.RequestFileLoader` supplies them, and an implementation may read them from a local folder, a
-cloud bucket, a database table, or anywhere else. Each is loaded as raw text — an id and a body —
-without regard for how the request is formatted. The body is then handed to an `spi.RequestLoader`,
-which parses it into a request in a format the `spi.TravelPlanner` supports.
+cloud bucket, a database table, or anywhere else. Each is loaded as an `spi.TravelPlannerRequest` — an id
+and a `raw` body — without regard for how the request is formatted. The `spi.TravelPlanner` interprets the
+raw body when it executes the request, just as KPI calculators interpret the raw body of the
+`spi.TravelPlannerResponse`.
 
 ## Outputs
 Each test run stores the following outputs for each test case

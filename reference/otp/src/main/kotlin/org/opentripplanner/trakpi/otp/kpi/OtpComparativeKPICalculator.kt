@@ -1,8 +1,8 @@
 package org.opentripplanner.trakpi.otp.kpi
 
-import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
+import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeResponseKPICalculator
 
 /**
- * A [ComparativeKPICalculator] for OTP requests that requires certain fields.
+ * A [ComparativeResponseKPICalculator] for OTP requests that requires certain fields.
  */
-interface OtpComparativeKPICalculator : ComparativeKPICalculator, OtpFieldRequirement
+interface OtpComparativeKPICalculator : ComparativeResponseKPICalculator, OtpFieldRequirement

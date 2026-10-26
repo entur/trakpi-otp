@@ -16,6 +16,6 @@ class DirectoryRequestFileLoaderTest {
         val files = DirectoryRequestFileLoader(dir).loadAll(TestsetVersion("ignored-version"))
 
         assertEquals(listOf("request-1", "request-2"), files.map { it.id })
-        assertEquals(listOf("first", "second"), files.map { it.body })
+        assertEquals(listOf("first", "second"), files.map { it.raw })
     }
 }

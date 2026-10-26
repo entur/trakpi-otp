@@ -78,7 +78,6 @@ fun main(args: Array<String>) {
         orchestrator = orchestrator,
         tester =
             TesterConfig(
-                requestLoader = OtpRequestLoader(),
                 travelPlanner = OTPTravelPlanner(endpoint, clientName = "entur-trakpi-dev"),
                 kpiCalculators = kpiCalculators,
                 resultsWriter = resultsWriter(),

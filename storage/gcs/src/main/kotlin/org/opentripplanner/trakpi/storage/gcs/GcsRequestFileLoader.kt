@@ -5,8 +5,8 @@ import com.google.cloud.storage.Storage
 import com.google.cloud.storage.StorageOptions
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.common.mapConcurrently
-import org.opentripplanner.trakpi.tester.spi.RequestFile
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
+import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
  * A [RequestFileLoader] that reads a testset's request files from a GCS bucket.
@@ -20,7 +20,7 @@ class GcsRequestFileLoader(
     private val api: String,
     private val concurrency: Int = DEFAULT_CONCURRENCY,
 ) : RequestFileLoader {
-    override fun loadAll(testsetVersion: TestsetVersion): List<RequestFile> {
+    override fun loadAll(testsetVersion: TestsetVersion): List<TravelPlannerRequest> {
         val prefix = "testsets/$api/${testsetVersion.value}/"
         // Downloads complete in no particular order. Sorting by id restores the order GCS lists the objects in.
         return storage
@@ -29,7 +29,7 @@ class GcsRequestFileLoader(
             .asSequence()
             .map { it.name.removePrefix(prefix) }
             .filter { it.isNotEmpty() && !it.contains('/') }
-            .mapConcurrently(concurrency) { id -> RequestFile(id = id, body = String(storage.readAllBytes(BlobId.of(bucket, prefix + id)))) }
+            .mapConcurrently(concurrency) { id -> TravelPlannerRequest(id = id, raw = String(storage.readAllBytes(BlobId.of(bucket, prefix + id)))) }
             .onEachIndexed { index, _ -> if ((index + 1) % PROGRESS_INTERVAL == 0) println("  downloaded ${index + 1} request(s)") }
             .sortedBy { it.id }
             .toList()

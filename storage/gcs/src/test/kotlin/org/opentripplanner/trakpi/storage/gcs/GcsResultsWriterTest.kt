@@ -19,7 +19,7 @@ class GcsResultsWriterTest {
 
     @Test
     fun `keys a request by testset and request, shared across runs`() {
-        assertEquals("requests/testset-1/request-001", GcsResultsWriter.requestObjectName(run, "request-001"))
+        assertEquals("requests/testset-1/request-001", GcsResultsWriter.requestObjectName(run.testsetVersion.value, "request-001"))
     }
 
     @Test

@@ -33,7 +33,6 @@ import org.opentripplanner.trakpi.testset.RequestCodec
 import org.opentripplanner.trakpi.testset.TestsetBuilder
 import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.kpi.KPICalculator
-import org.opentripplanner.trakpi.tester.spi.RequestLoader
 import org.opentripplanner.trakpi.testset.RequestTransform
 import org.opentripplanner.trakpi.tester.spi.DrillDownRenderer
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
@@ -44,7 +43,6 @@ import org.opentripplanner.trakpi.tester.spi.RunRef
 import org.opentripplanner.trakpi.testset.TestsetSource
 import org.opentripplanner.trakpi.testset.TestsetStore
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
-import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 
 /**
  * The runtime side of a planner integration: what the `test`, `compare` and `drill` commands need to run
@@ -58,9 +56,8 @@ import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
  * request, the latter renders one run's response comparison (both are planner-agnostic to the command —
  * only [drillDownRenderer]'s output is planner-specific).
  */
-class TesterConfig<R : TravelPlannerRequest>(
-    val requestLoader: RequestLoader<R>,
-    val travelPlanner: TravelPlanner<R>,
+class TesterConfig(
+    val travelPlanner: TravelPlanner,
     val kpiCalculators: List<KPICalculator>,
     val resultsWriter: ResultsWriter,
     val responseArchiveWriter: ResultsWriter? = null,
@@ -89,11 +86,11 @@ class TestsetConfig<T>(
 /**
  * Runs the trakpi command-line interface.
  */
-fun <R : TravelPlannerRequest, T> runTrakpi(
+fun <T> runTrakpi(
     args: Array<String>,
     application: String,
     orchestrator: PlannerOrchestrator? = null,
-    tester: TesterConfig<R>? = null,
+    tester: TesterConfig? = null,
     testset: TestsetConfig<T>? = null,
 ) {
     val commands =
@@ -148,9 +145,9 @@ internal class Stop(private val orchestrator: PlannerOrchestrator?) : VersionedC
     }
 }
 
-internal class Test<R : TravelPlannerRequest>(
+internal class Test(
     private val application: String,
-    private val tester: TesterConfig<R>?,
+    private val tester: TesterConfig?,
     private val orchestrator: PlannerOrchestrator?,
 ) : VersionedCommand("test") {
     override fun help(context: Context) =
@@ -216,7 +213,6 @@ internal class Test<R : TravelPlannerRequest>(
                             runId = runId?.takeIf { it.isNotBlank() },
                         ),
                     requestFileLoader = requestFileLoader,
-                    requestLoader = tester.requestLoader,
                     travelPlanner = tester.travelPlanner,
                     kpiCalculators = tester.kpiCalculators,
                     resultsWriter =
@@ -243,9 +239,9 @@ internal class Test<R : TravelPlannerRequest>(
  * archived responses for the testset and computes the comparative KPIs, writing them under [runId] so
  * they land on the candidate test run. Run after both versions' `test` passes.
  */
-internal class Compare<R : TravelPlannerRequest>(
+internal class Compare(
     private val application: String,
-    private val tester: TesterConfig<R>?,
+    private val tester: TesterConfig?,
 ) : VersionedCommand("compare") {
     override fun help(context: Context) =
         "Compare a tested version against a reference version's stored responses (second pass)."
@@ -299,7 +295,7 @@ internal class Compare<R : TravelPlannerRequest>(
  * triple), it drills down to one run's comparison output and renders the candidate-vs-reference responses via the
  * planner's [DrillDownRenderer].
  */
-internal class Drill(private val tester: TesterConfig<*>?) : CliktCommand(name = "drill") {
+internal class Drill(private val tester: TesterConfig?) : CliktCommand(name = "drill") {
     override fun help(context: Context) =
         "Drill down into a request: the runs that exercised it, or one run's response comparison."
 
@@ -316,7 +312,7 @@ internal class Drill(private val tester: TesterConfig<*>?) : CliktCommand(name =
         else printRunVector(tester)
     }
 
-    private fun printRunVector(tester: TesterConfig<*>) {
+    private fun printRunVector(tester: TesterConfig) {
         val reader = tester.runReader ?: throw UsageError("The run vector needs a run store; set TRAKPI_BQ_PROJECT.")
         val runs = reader.runsForRequest(requestId)
         if (runs.isEmpty()) {
@@ -335,7 +331,7 @@ internal class Drill(private val tester: TesterConfig<*>?) : CliktCommand(name =
         println("Drill down to one run with:  drill $requestId --run <run-id>")
     }
 
-    private fun drillDownIntoRun(tester: TesterConfig<*>) {
+    private fun drillDownIntoRun(tester: TesterConfig) {
         val reader = tester.resultsReader ?: throw UsageError("The response comparison needs the archive; set TRAKPI_GCS_BUCKET.")
         val renderer = tester.drillDownRenderer ?: throw UsageError("This planner does not support drilling down into responses.")
         val runRef = resolveRun(tester)
@@ -354,7 +350,7 @@ internal class Drill(private val tester: TesterConfig<*>?) : CliktCommand(name =
      * The run to drill down into: from an explicit `--version`/`--reference-version`/`--testset-version`
      * triple, or by resolving a `--run` id through the run store.
      */
-    private fun resolveRun(tester: TesterConfig<*>): RunRef {
+    private fun resolveRun(tester: TesterConfig): RunRef {
         if (versionOpt != null || referenceVersionOpt != null || testsetOpt != null) {
             val version = versionOpt ?: throw UsageError("--version is required when drilling down without --run.")
             val testset = testsetOpt ?: throw UsageError("--testset-version is required when drilling down without --run.")
