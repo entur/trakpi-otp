@@ -12,6 +12,7 @@ import org.opentripplanner.trakpi.otp.kpi.MinGeneralizedCostKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinStreetDistanceKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransferTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.MinTransfersKPICalculator
+import org.opentripplanner.trakpi.otp.kpi.OnBoardHasItinerariesKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ResponseTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
@@ -60,6 +61,7 @@ fun main(args: Array<String>) {
             MinTransferTimeKPICalculator(),
             DepartureCountKPICalculator(),
             GraphQlErrorCountKPICalculator(),
+            OnBoardHasItinerariesKPICalculator(),
         )
     // Comparative KPIs score a subject against the reference run's response for the same request.
     // Declaring a comparative KPI here also pulls in the required fields into prepared results.
