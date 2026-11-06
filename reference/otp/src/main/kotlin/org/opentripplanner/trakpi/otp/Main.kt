@@ -1,6 +1,7 @@
 package org.opentripplanner.trakpi.otp
 
 import java.nio.file.Path
+import java.time.Period
 import org.opentripplanner.trakpi.otp.kpi.DepartureCountKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.FastestItineraryKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.GraphQlErrorCountKPICalculator
@@ -16,9 +17,11 @@ import org.opentripplanner.trakpi.otp.kpi.OnBoardHasItinerariesKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.ResponseTimeKPICalculator
 import org.opentripplanner.trakpi.otp.kpi.RoutingTimeKPICalculator
 import org.opentripplanner.trakpi.otp.testset.OtpRequestCodec
+import org.opentripplanner.trakpi.otp.testset.SearchTimeWriter
 import org.opentripplanner.trakpi.otp.testset.transforms.EnsureKpiFields
 import org.opentripplanner.trakpi.otp.testset.transforms.ObfuscateCoordinates
 import org.opentripplanner.trakpi.otp.testset.transforms.OtpStationSnapper
+import org.opentripplanner.trakpi.otp.testset.transforms.ShiftDates
 import org.opentripplanner.trakpi.TesterConfig
 import org.opentripplanner.trakpi.TestsetConfig
 import org.opentripplanner.trakpi.runTrakpi
@@ -101,6 +104,9 @@ fun main(args: Array<String>) {
                         listOf(
                             ObfuscateCoordinates(OtpStationSnapper(OTP_DEV_ENDPOINT, clientName = "entur-trakpi-dev")),
                             EnsureKpiFields(kpiCalculators + comparativeKpiCalculators),
+                            // The source samples the 7 days before prepare. Moving them 2 weeks ahead puts every
+                            // request 7 to 13 days after prepare: on or after each run day until the next weekly prepare.
+                            ShiftDates(shift = Period.ofWeeks(2)),
                         ),
                     store = testsetStore(),
                     targetSize = sampleSize,
@@ -125,6 +131,7 @@ private fun testsetSource(sampleSize: Int): TestsetSource? {
         environment = RequestEnvironment.valueOf(environment.uppercase()),
         sampleSize = sampleSize,
         samplePercent = System.getenv("TRAKPI_REQUESTS_SAMPLE_PERCENT")?.toDouble() ?: BigQueryTestsetSource.DEFAULT_SAMPLE_PERCENT,
+        writeSentTime = SearchTimeWriter()::write,
     )
 }
 

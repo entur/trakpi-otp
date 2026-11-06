@@ -38,4 +38,13 @@ class BigQueryTestsetSourceTest {
         assertTrue(dedupe in 0 until rank, query)
         assertTrue(query.trimEnd().endsWith("ORDER BY rank, hour"), query)
     }
+
+    @Test
+    fun `samples the last complete days in Oslo`() {
+        val query = BigQueryTestsetSource.query("project.dataset.table", 1.0)
+
+        assertTrue("publish_time >= TIMESTAMP(DATE_SUB(CURRENT_DATE('Europe/Oslo'), INTERVAL @days DAY), 'Europe/Oslo')" in query, query)
+        assertTrue("publish_time < TIMESTAMP(CURRENT_DATE('Europe/Oslo'), 'Europe/Oslo')" in query, query)
+        assertTrue("SELECT id, body, sent_at\n" in query, query)
+    }
 }
