@@ -163,6 +163,7 @@ private fun resultsWriter(): ResultsWriter {
             projectId = it,
             dataset = System.getenv("TRAKPI_BQ_DATASET") ?: "kpi_tracking",
             table = System.getenv("TRAKPI_BQ_TABLE") ?: "kpi_metrics_v1",
+            runsTable = System.getenv("TRAKPI_BQ_RUNS_TABLE") ?: "runs_v1",
         )
     }
     return FileResultsWriter(Path.of(System.getenv("TRAKPI_RESULTS_DIR") ?: "results"))

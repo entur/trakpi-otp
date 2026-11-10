@@ -2,6 +2,7 @@ package org.opentripplanner.trakpi.tester
 
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
 /**
@@ -14,5 +15,9 @@ class FanOutResultsWriter(private val writers: List<ResultsWriter>) : ResultsWri
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
         writers.forEach { it.store(run, result) }
+    }
+
+    override fun completeRun(run: RunMetadata, phase: RunPhase) {
+        writers.forEach { it.completeRun(run, phase) }
     }
 }

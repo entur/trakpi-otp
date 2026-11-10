@@ -10,6 +10,7 @@ import org.opentripplanner.trakpi.tester.spi.ComparisonCase
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerResponse
@@ -50,9 +51,16 @@ class ComparatorTest {
         val stored = HashMap<String, List<Kpi>>()
         val requests = HashMap<String, String>()
 
+        /** Each completed phase, with how many results had been stored when it completed. */
+        val completed = mutableListOf<Pair<RunPhase, Int>>()
+
         override fun store(run: RunMetadata, result: TestCaseResult) {
             stored[result.requestId] = result.kpis
             requests[result.requestId] = result.request
+        }
+
+        override fun completeRun(run: RunMetadata, phase: RunPhase) {
+            completed += phase to stored.size
         }
     }
 
@@ -101,9 +109,21 @@ class ComparatorTest {
         val reader = MapResultsReader(mapOf(subject to mapOf("request-1" to "a"), reference to mapOf("request-1" to "a")))
         val failing = ComparativeResponseKPICalculator { _, _ -> error("calculator failed") }
 
-        val e = assertFailsWith<IllegalStateException> {
-            Comparator(run, reference, reader, listOf(failing), RecordingResultsWriter()).run()
-        }
+        val writer = RecordingResultsWriter()
+
+        val e = assertFailsWith<IllegalStateException> { Comparator(run, reference, reader, listOf(failing), writer).run() }
         assertEquals("calculator failed", e.message)
+        assertEquals(emptyList(), writer.completed)
+    }
+
+    @Test
+    fun `completes the compare phase once, after every comparative KPI is stored`() {
+        val ids = (1..5).map { "request-$it" }
+        val reader = MapResultsReader(mapOf(subject to ids.associateWith { "same" }, reference to ids.associateWith { "same" }))
+        val writer = RecordingResultsWriter()
+
+        Comparator(run, reference, reader, listOf(sameRaw), writer).run()
+
+        assertEquals(listOf(RunPhase.COMPARE to ids.size), writer.completed)
     }
 }

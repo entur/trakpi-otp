@@ -4,6 +4,7 @@ import org.opentripplanner.trakpi.common.mapConcurrently
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
@@ -38,6 +39,7 @@ class Tester(
                 if (response != null) store(request, response)
                 progress.tryReportProgress(itemsProcessed = index + 1)
             }
+        resultsWriter.completeRun(run, RunPhase.TEST)
     }
 
     /** Executes [request]; null when it fails, which is logged. */

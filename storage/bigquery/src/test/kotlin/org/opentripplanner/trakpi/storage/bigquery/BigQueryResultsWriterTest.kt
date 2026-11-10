@@ -8,6 +8,7 @@ import org.opentripplanner.trakpi.common.PlannerVersion
 import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.kpi.Kpi
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
 class BigQueryResultsWriterTest {
@@ -92,5 +93,14 @@ class BigQueryResultsWriterTest {
         assertTrue("kpi_name" !in rows.first().content)
         assertTrue("value" !in rows.first().content)
         assertEquals("trip", rows.first().content["method"])
+    }
+
+    @Test
+    fun `a finished phase yields one runs-table row, one per run and phase`() {
+        val recordedAt = Instant.parse("2026-07-08T05:30:00Z")
+        val row = BigQueryResultsWriter.completionRow(run, RunPhase.COMPARE, recordedAt)
+
+        assertEquals("${run.runId}:compare", row.insertId)
+        assertEquals(mapOf("run_id" to run.runId, "phase" to "compare", "recorded_at" to "2026-07-08T05:30:00Z"), row.content)
     }
 }

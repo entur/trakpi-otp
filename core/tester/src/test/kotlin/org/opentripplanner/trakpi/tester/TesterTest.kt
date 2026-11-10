@@ -10,6 +10,7 @@ import org.opentripplanner.trakpi.common.TestsetVersion
 import org.opentripplanner.trakpi.tester.spi.RequestFileLoader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.TravelPlanner
 import org.opentripplanner.trakpi.tester.spi.TravelPlannerRequest
@@ -56,11 +57,18 @@ class TesterTest {
         val stored = mutableListOf<String>()
         val kpis = HashMap<String, List<Kpi>>()
 
+        /** Each completed phase, with how many results had been stored when it completed. */
+        val completed = mutableListOf<Pair<RunPhase, Int>>()
+
         override fun store(run: RunMetadata, result: TestCaseResult) {
             check(storing.incrementAndGet() == 1) { "stores overlapped" }
             stored += result.requestId
             kpis[result.requestId] = result.kpis
             storing.decrementAndGet()
+        }
+
+        override fun completeRun(run: RunMetadata, phase: RunPhase) {
+            completed += phase to stored.size
         }
     }
 
@@ -114,5 +122,14 @@ class TesterTest {
         for ((id, kpis) in writer.kpis) {
             assertEquals(listOf(Kpi("responseLength", id.length.toDouble()), Kpi("requestMatchesResponse", 1.0)), kpis)
         }
+    }
+
+    @Test
+    fun `completes the test phase once, after every result is stored`() {
+        val writer = RecordingResultsWriter()
+
+        tester(SlowPlanner(failing = setOf("request-7")), writer, concurrency = 4).run()
+
+        assertEquals(listOf(RunPhase.TEST to files.size - 1), writer.completed)
     }
 }

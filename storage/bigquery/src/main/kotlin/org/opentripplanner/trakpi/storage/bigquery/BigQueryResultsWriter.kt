@@ -4,8 +4,10 @@ import com.google.cloud.bigquery.BigQuery
 import com.google.cloud.bigquery.BigQueryOptions
 import com.google.cloud.bigquery.InsertAllRequest
 import com.google.cloud.bigquery.TableId
+import java.time.Instant
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 
 /**
@@ -15,9 +17,17 @@ import org.opentripplanner.trakpi.tester.spi.TestCaseResult
  * attributes (e.g. `http_status_code`), so each row is self-contained. A result that carries no
  * KPIs still yields one dimension-only row with null `kpi_name`/`value`.
  * Assumes the table already exists with columns for every dimension and attribute.
+ *
+ * Each finished phase of a run adds one row (`run_id, phase, recorded_at`) to [runsTableId]. A run's rows in
+ * [tableId] are complete for a phase only once that row exists.
+ *
  * Authenticates with Application Default Credentials.
  */
-class BigQueryResultsWriter(private val bigQuery: BigQuery, private val tableId: TableId) : ResultsWriter {
+class BigQueryResultsWriter(
+    private val bigQuery: BigQuery,
+    private val tableId: TableId,
+    private val runsTableId: TableId,
+) : ResultsWriter {
 
     override fun store(run: RunMetadata, result: TestCaseResult) {
         val rows = toRows(run, result)
@@ -30,11 +40,29 @@ class BigQueryResultsWriter(private val bigQuery: BigQuery, private val tableId:
         }
     }
 
+    override fun completeRun(run: RunMetadata, phase: RunPhase) {
+        val row = completionRow(run, phase, recordedAt = Instant.now())
+        val response = bigQuery.insertAll(InsertAllRequest.newBuilder(runsTableId).addRow(row.insertId, row.content).build())
+        check(!response.hasErrors()) { "BigQuery insert failed for the completion of run ${run.runId}, phase $phase: ${response.insertErrors}" }
+    }
+
     companion object {
-        /** A storage that streams into `<projectId>.<dataset>.<table>` using Application Default Credentials. */
-        fun create(projectId: String, dataset: String, table: String): BigQueryResultsWriter {
+        /**
+         * A storage that streams KPIs into `<projectId>.<dataset>.<table>` and run completions into
+         * `<projectId>.<dataset>.<runsTable>`, using Application Default Credentials.
+         */
+        fun create(projectId: String, dataset: String, table: String, runsTable: String): BigQueryResultsWriter {
             val bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().service
-            return BigQueryResultsWriter(bigQuery, TableId.of(projectId, dataset, table))
+            return BigQueryResultsWriter(bigQuery, TableId.of(projectId, dataset, table), TableId.of(projectId, dataset, runsTable))
+        }
+
+        /** The runs-table row recording that [phase] of [run] finished at [recordedAt]. */
+        internal fun completionRow(run: RunMetadata, phase: RunPhase, recordedAt: Instant): Row {
+            val phaseName = phase.name.lowercase()
+            return Row(
+                insertId = "${run.runId}:$phaseName",
+                content = mapOf("run_id" to run.runId, "phase" to phaseName, "recorded_at" to recordedAt.toString()),
+            )
         }
 
         /**

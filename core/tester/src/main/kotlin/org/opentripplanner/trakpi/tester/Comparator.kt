@@ -5,6 +5,7 @@ import org.opentripplanner.trakpi.tester.spi.ComparisonCase
 import org.opentripplanner.trakpi.tester.spi.ResultsReader
 import org.opentripplanner.trakpi.tester.spi.ResultsWriter
 import org.opentripplanner.trakpi.tester.spi.RunMetadata
+import org.opentripplanner.trakpi.tester.spi.RunPhase
 import org.opentripplanner.trakpi.tester.spi.TestCaseResult
 import org.opentripplanner.trakpi.tester.spi.kpi.ComparativeKPICalculator
 import org.opentripplanner.trakpi.tester.spi.kpi.calculate
@@ -60,6 +61,7 @@ class Comparator(
         }
         val missingNote = if (missingReference > 0) "; $missingReference had no reference response" else ""
         println("Compared $compared response(s); wrote comparative KPIs for $scored request(s)$missingNote.")
+        resultsWriter.completeRun(run, RunPhase.COMPARE)
     }
 
     private companion object {
