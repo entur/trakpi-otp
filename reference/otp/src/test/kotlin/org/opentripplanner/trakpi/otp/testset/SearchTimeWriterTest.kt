@@ -65,6 +65,18 @@ class SearchTimeWriterTest {
     }
 
     @Test
+    fun `writes a date into departures on a line's service journeys`() {
+        val out = write("{ line(id: \"L\") { serviceJourneys { estimatedCalls { aimedDepartureTime } } } }")
+        assertTrue("estimatedCalls(date: \"2026-10-20\")" in out.query, out.query)
+    }
+
+    @Test
+    fun `leaves departures on a dated service journey alone`() {
+        val body = "{ datedServiceJourney(id: \"X\") { estimatedCalls { aimedDepartureTime } } }"
+        assertEquals(OtpRequestCodec.deserialize(Request("", body)).toRequest().body, writer.write(body, sentAt))
+    }
+
+    @Test
     fun `leaves a paging trip's time to its cursor`() {
         val out = write(envelope("query(\$c: String) { trip(pageCursor: \$c) { tripPatterns { duration } } }", "{\"c\":\"MXwyMDI2LTEw\"}"))
         assertTrue("dateTime" !in out.query, out.query)

@@ -76,8 +76,8 @@ class SearchTimeWriter(private val zone: ZoneId = ZoneId.of("Europe/Oslo")) {
             val (name, value) =
                 when {
                     field.name == "trip" && !isSet(field.arguments, "pageCursor") -> "dateTime" to searchTime.toString()
-                    field.name == "estimatedCalls" && parent == "serviceJourney" -> "date" to searchTime.toLocalDate().toString()
-                    field.name == "estimatedCalls" -> "startTime" to searchTime.toString()
+                    field.name == "estimatedCalls" && parent in DATE_PARENTS -> "date" to searchTime.toLocalDate().toString()
+                    field.name == "estimatedCalls" && parent in START_TIME_PARENTS -> "startTime" to searchTime.toString()
                     else -> return field.arguments
                 }
             val existing = field.arguments.firstOrNull { it.name == name }
@@ -98,5 +98,13 @@ class SearchTimeWriter(private val zone: ZoneId = ZoneId.of("Europe/Oslo")) {
         }
 
         private fun isUnset(variable: String): Boolean = variable !in variablesWithDefault && variables[variable].let { it == null || it is JsonNull }
+    }
+
+    private companion object {
+        /** Fields returning a service journey, whose `estimatedCalls` take a `date`. */
+        val DATE_PARENTS = setOf("serviceJourney", "serviceJourneys")
+
+        /** Fields returning a quay or stop place, whose `estimatedCalls` take a `startTime`. */
+        val START_TIME_PARENTS = setOf("quay", "quays", "stopPlace", "stopPlaces", "stopPlacesByBbox")
     }
 }
